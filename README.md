@@ -51,9 +51,15 @@ $100 at a $1.00T target  →  83,365,949 raw units     ✅ multiplier-correct
 
 **2. A transfer fee on an epoch schedule.** `transferFeeConfig` holds two slots and steps from
 50 bps to 100 bps at epoch 1039. A vault therefore *never* receives what was sent, and the
-rate can change between quoting and signing. Rung measures the vault's balance delta and
-escrows what actually arrived, then requires it to clear the maker's floor. Equality is
-unachievable under a fee; a floor is both achievable and sufficient.
+rate can change between quoting and signing.
+
+Two halves to the answer. On chain, the program measures the vault's balance delta and
+escrows what actually arrived, then requires it to clear the maker's floor — equality is
+unachievable under a fee, a floor is both achievable and sufficient. Off chain, the client
+sizes transfers against the **worse** of the two slots rather than the live one, so a
+transaction still clears if the rate steps up before it is signed. A test asserts that sizing
+against the *active* slot fails once the fee moves, so the reasoning cannot be quietly
+simplified away later.
 
 **3. The collateral is not trustless, and we say so.** The issuer holds `permanentDelegate`,
 `freezeAuthority` and a pause switch over the mint — they can move tokens out of a
@@ -94,7 +100,7 @@ absent counterparty can trap collateral that is owed back.
 |---|---|
 | `programs/rung/` | Anchor program — 9 instructions, PDA vaults |
 | `packages/sdk/` | Token-2022 math, valuation→strike, Commitment Curve |
-| `apps/web/` | Next.js app |
+| `apps/web/` | Next.js app — Commitment Curve, commit, protect, positions |
 | `docs/limitations.md` | What this does not do, stated plainly |
 | `scripts/` | Chain preflight, WSL toolchain, deploy |
 
@@ -102,7 +108,7 @@ absent counterparty can trap collateral that is owed back.
 
 ```bash
 npm install
-npm run test:sdk                      # 27 tests, no chain needed
+npm run test:sdk                      # 35 tests, no chain needed
 bash scripts/wsl/test-local.sh        # 18 tests against a local validator
 node scripts/verify-chain.ts          # re-check the mint against live mainnet
 ```
@@ -114,14 +120,15 @@ so yesterday's numbers are not evidence.
 
 - Program: **18/18** tests — full lifecycle, both settlement paths, and every refusal in the
   state machine
-- SDK: **27/27** tests, pinned against live mainnet values
-- Web: production build green; live PreStocks data end to end
+- SDK: **35/35** tests, pinned against live mainnet values
+- Web: production build green across seven routes; live PreStocks data end to end
+- Every instruction has a UI: commit, take the other side, exercise, cancel, settle expiry
 - Program ID: `6kqka5NWofo1cm6bm5JMhWbQgHeR6YT23qTvwnusSwpM`
 
 **Not yet deployed to devnet.** The public devnet RPC rate-limits hard enough that a 337 KB
-program upload fails partway; the deploy resumes from a buffer once a dedicated endpoint is
-configured. The protection (taker) and exercise flows exist and are tested on-chain, but do
-not yet have UI.
+program upload fails partway; the deploy resumes from the buffer it left behind once a
+dedicated endpoint is configured. Until then the app runs against a local validator, where
+the full lifecycle works end to end.
 
 This is **unaudited** hackathon software. The devnet demo uses a Token-2022 mint reproducing
 the real transfer-fee behaviour, labelled as a mock wherever it appears; it is not a real
