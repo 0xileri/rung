@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="Limit+">
+  <title>Limit+</title>
+  <rect x="6" y="7"  width="16" height="6" rx="3" fill="#F7F6F3"/>
+  <rect x="6" y="17" width="24" height="6" rx="3" fill="#F7F6F3"/>
+  <rect x="6" y="27" width="34" height="6" rx="3" fill="#C98A3C"/>
+  <rect x="6" y="37" width="20" height="6" rx="3" fill="#F7F6F3"/>
+  <rect x="43" y="4" width="2" height="40" rx="1" fill="#F7F6F3" opacity="0.36"/>
+</svg>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 48" width="220" height="48" role="img" aria-label="Limit+">
+  <title>Limit+</title>
+  <rect x="6" y="7"  width="16" height="6" rx="3" fill="#0E1116"/>
+  <rect x="6" y="17" width="24" height="6" rx="3" fill="#0E1116"/>
+  <rect x="6" y="27" width="34" height="6" rx="3" fill="#C98A3C"/>
+  <rect x="6" y="37" width="20" height="6" rx="3" fill="#0E1116"/>
+  <rect x="43" y="4" width="2" height="40" rx="1" fill="#0E1116" opacity="0.28"/>
+  <text x="62" y="36" font-family="Instrument Serif, Georgia, 'Times New Roman', serif" font-size="38" fill="#0E1116">Limit</text>
+  <text x="152" y="36" font-family="Instrument Serif, Georgia, 'Times New Roman', serif" font-size="38" fill="#C98A3C">+</text>
+</svg>

@@ -147,20 +147,24 @@ describe('limit-plus', () => {
   }
 
   /**
-   * Fund a test keypair from the provider wallet.
+   * Fund a test keypair, working on either a local validator or devnet.
    *
-   * Not `requestAirdrop`: this suite runs against devnet, where the faucet is capped per
-   * request and rate-limited across them, so airdropping to each keypair is unreliable and
-   * would make the suite fail for reasons unrelated to the program. The provider wallet is
-   * funded once, out of band, and pays for everything from there.
+   * A local validator airdrops instantly and without limit, which is the fast path. Devnet's
+   * faucet is capped per request and rate-limited across them, so there the airdrop fails
+   * and we pay out of the provider wallet instead — which is funded once, out of band.
+   * Trying both means the suite does not care which cluster it is pointed at.
    */
   async function fund(to: PublicKey, sol: number) {
+    const lamports = Math.round(sol * LAMPORTS_PER_SOL);
+    try {
+      const sig = await connection.requestAirdrop(to, lamports);
+      await connection.confirmTransaction(sig, 'confirmed');
+      return;
+    } catch {
+      // Expected on devnet; fall through to paying from the provider wallet.
+    }
     const tx = new anchor.web3.Transaction().add(
-      SystemProgram.transfer({
-        fromPubkey: admin.publicKey,
-        toPubkey: to,
-        lamports: Math.round(sol * LAMPORTS_PER_SOL),
-      }),
+      SystemProgram.transfer({ fromPubkey: admin.publicKey, toPubkey: to, lamports }),
     );
     await provider.sendAndConfirm(tx, []);
   }
