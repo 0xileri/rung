@@ -10,11 +10,10 @@ export const metadata: Metadata = {
     'Lock USDC at the private-company valuation where you would actually own exposure. PreStocks holders pay for the right to exchange their tokens for that capital before expiry.',
   icons: [
     { rel: 'icon', url: '/favicon.svg', type: 'image/svg+xml' },
-    { rel: 'mask-icon', url: '/icon-mask.svg', color: '#07090C' },
+    { rel: 'mask-icon', url: '/icon-mask.svg', color: '#0A0A0A' },
   ],
 };
 
-/** Navigation stays at three items, per the spec's warning against a dense trading terminal. */
 const NAV = [
   { href: '/', label: 'Discover' },
   { href: '/asset/OPENAI', label: 'Commit' },
@@ -24,7 +23,7 @@ const NAV = [
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" data-theme="dark">
+    <html lang="en">
       <body>
         <WalletRoot>
           <header className="site-header">
@@ -34,7 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 display: 'flex',
                 alignItems: 'center',
                 gap: 28,
-                padding: '14px 24px',
+                padding: '12px 24px',
                 flexWrap: 'wrap',
                 minHeight: 'var(--header-h)',
               }}
@@ -43,26 +42,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 href="/"
                 style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}
               >
-                <span className="float-mark" style={{ display: 'inline-flex' }}>
-                  <Mark size={26} reversed />
-                </span>
-                <Wordmark size={23} reversed />
+                <Mark size={24} />
+                <Wordmark size={20} />
               </Link>
               <nav
                 className="site-nav"
-                style={{ display: 'flex', gap: 22, flexGrow: 1, flexWrap: 'wrap' }}
+                style={{ display: 'flex', gap: 24, flexGrow: 1, flexWrap: 'wrap' }}
               >
                 {NAV.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    style={{ fontSize: 14, textDecoration: 'none' }}
-                  >
+                  <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
                     {item.label}
                   </Link>
                 ))}
               </nav>
-              <span className="fig" style={{ fontSize: 12, color: 'var(--text-faint)' }}>
+              <span className="cluster-pill">
                 {process.env.NEXT_PUBLIC_CLUSTER ?? 'devnet'}
               </span>
               <WalletBar />
@@ -72,13 +65,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <main style={{ minHeight: '70vh' }}>{children}</main>
 
           <footer className="site-footer">
-            <div className="wrap" style={{ fontSize: 12, color: 'var(--text-faint)', lineHeight: 1.6 }}>
-              <p style={{ margin: '0 0 8px' }}>
+            <div className="wrap" style={{ fontSize: 13, color: 'var(--text-faint)', lineHeight: 1.65 }}>
+              <p style={{ margin: '0 0 10px', maxWidth: 720 }}>
                 Experimental software, unaudited. PreStocks provide economic exposure to
                 private-company-linked assets and may be restricted in some jurisdictions. Rung is
                 not investment advice.
               </p>
-              <p style={{ margin: 0 }}>
+              <p style={{ margin: 0, maxWidth: 720 }}>
                 Positions are collateralized in program-controlled vaults. The PreStocks issuer holds
                 permanent delegate, freeze and pause authority over the mint, so that holds subject to
                 issuer trust &mdash;{' '}

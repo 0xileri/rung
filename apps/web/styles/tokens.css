@@ -1,87 +1,71 @@
 /*
- * Rung design tokens — dark editorial fintech (default).
+ * Rung design tokens — light infrastructure product (Stripe / Linear / Mercury).
  *
- * Amber = committed capital. Teal = downside protection.
- * -fill for shapes / primary actions; -ink for readable text.
+ * High-contrast near-black on off-white. Monochrome base; amber is the sole accent
+ * (primary CTAs + peak curve capital). Teal reserved for protection / matched state.
  */
 
 :root {
-  /* Surfaces (dark product chrome) */
-  --ink: #07090c;
-  --paper: #0b0e13;
-  --surface: #12171f;
-  --surface-elevated: #181e28;
-  --line: #262c36;
-  --line-soft: #1c222c;
-  --line-strong: #343b48;
+  /* Surfaces */
+  --ink: #0a0a0a;
+  --paper: #fafafa;
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --surface-muted: #f4f4f5;
+  --line: #e4e4e7;
+  --line-soft: #f0f0f2;
+  --line-strong: #d4d4d8;
 
-  /* Light glyph on dark chrome (marks, reversed wordmark) */
-  --chalk: #f3f1ec;
+  /* Glyph on dark chrome (rare: inverted panels only) */
+  --chalk: #fafafa;
 
-  /* Text */
-  --text: #f3f1ec;
-  --text-muted: #a7abb4;
-  --text-faint: #7e848f;
+  /* Text — high contrast, no muddy gray-on-gray */
+  --text: #0a0a0a;
+  --text-muted: #3f3f46;
+  --text-faint: #71717a;
 
-  /* Amber — committed capital */
-  --amber-fill: #c98a3c;
-  --amber-ink: #d4a05c;
-  --amber-wash: #1a1610;
-  --amber-soft: #6b5230;
-  --amber-glow: rgba(201, 138, 60, 0.22);
-  --amber-glow-ring: rgba(201, 138, 60, 0.18);
+  /* Amber / copper — sole brand accent */
+  --amber-fill: #c47a2c;
+  --amber-ink: #9a5f1f;
+  --amber-wash: #fff7ed;
+  --amber-soft: #f0d9b5;
+  --amber-glow: rgba(196, 122, 44, 0.14);
+  --amber-glow-ring: rgba(196, 122, 44, 0.22);
 
-  /* Teal — protection */
-  --teal-fill: #5f9a9b;
-  --teal-ink: #7eb5b6;
+  /* Teal — protection / matched (secondary semantic, not brand) */
+  --teal-fill: #0d9488;
+  --teal-ink: #0f766e;
+  --teal-wash: #f0fdfa;
 
-  --caution: #d06048;
+  --caution: #b45309;
+  --danger: #dc2626;
+  --danger-wash: #fef2f2;
 
-  /* Elevation / motion */
-  --shadow-soft: 0 10px 40px rgba(0, 0, 0, 0.35);
-  --shadow-lift: 0 16px 48px rgba(0, 0, 0, 0.45);
-  --glow-amber: 0 0 48px rgba(201, 138, 60, 0.12);
+  /* Elevation — soft, Mercury-calm */
+  --shadow-xs: 0 1px 2px rgba(10, 10, 10, 0.04);
+  --shadow-soft: 0 1px 2px rgba(10, 10, 10, 0.04), 0 4px 16px rgba(10, 10, 10, 0.04);
+  --shadow-lift: 0 8px 30px rgba(10, 10, 10, 0.08), 0 2px 8px rgba(10, 10, 10, 0.04);
+  --shadow-device: 0 24px 64px rgba(10, 10, 10, 0.12), 0 8px 24px rgba(10, 10, 10, 0.06);
+  --glow-amber: 0 0 40px rgba(196, 122, 44, 0.12);
 
-  --font-display: 'Instrument Serif', Georgia, 'Times New Roman', serif;
-  --font-sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  /* Typography — geometric sans (Inter / Geist-like stack) */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-display: var(--font-sans);
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
   --radius-sm: 8px;
-  --radius: 14px;
-  --radius-lg: 18px;
+  --radius: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
 
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-soft: cubic-bezier(0.33, 1, 0.68, 1);
-  --dur-fast: 180ms;
-  --dur: 280ms;
-  --dur-slow: 420ms;
+  --dur-fast: 150ms;
+  --dur: 240ms;
+  --dur-slow: 400ms;
 
   --header-h: 64px;
-}
-
-:root[data-theme='light'] {
-  --ink: #0e1116;
-  --paper: #f7f6f3;
-  --surface: #ffffff;
-  --surface-elevated: #ffffff;
-  --line: #e2dfd8;
-  --line-soft: #efede8;
-  --line-strong: #d4d0c6;
-  --chalk: #f7f6f3;
-  --text: #0e1116;
-  --text-muted: #414751;
-  --text-faint: #5a6069;
-  --amber-fill: #c98a3c;
-  --amber-ink: #8f5f1e;
-  --amber-wash: #fff8ec;
-  --amber-soft: #d9cdb8;
-  --amber-glow: rgba(201, 138, 60, 0.15);
-  --teal-fill: #4a7c7e;
-  --teal-ink: #35605f;
-  --caution: #b0442e;
-  --shadow-soft: 0 10px 40px rgba(14, 17, 22, 0.08);
-  --shadow-lift: 0 16px 48px rgba(14, 17, 22, 0.12);
-  --glow-amber: 0 0 40px rgba(201, 138, 60, 0.1);
+  --wrap: 1120px;
 }
 
 .figure,
