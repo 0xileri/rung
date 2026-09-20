@@ -34,7 +34,27 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: `No PreStock named ${symbol}` }, { status: 404 });
     }
 
-    const mint = await getMintState(asset.contract_address);
+    // Mint state is best-effort: it comes from a rate-limiting mainnet RPC, and returning
+    // 502 for the whole asset because the issuer-permission read failed is disproportionate.
+    let mint: Awaited<ReturnType<typeof getMintState>> | null = null;
+    try {
+      mint = await getMintState(asset.contract_address);
+    } catch {
+      /* reported as mintAvailable: false below */
+    }
+
+    if (!mint) {
+      return NextResponse.json({
+        asset,
+        mint: null,
+        mintAvailable: false,
+        caveats: [],
+        feedConsistent: isFeedConsistent(asset),
+        fetchedAt,
+        stale,
+      });
+    }
+
     return NextResponse.json({
       asset,
       mint: {
@@ -46,6 +66,7 @@ export async function GET(request: Request) {
           maximumFee: mint.transferFee.maximumFee.toString(),
         },
       },
+      mintAvailable: true,
       caveats: custodyCaveats(mint),
       // Surfaced rather than silently trusted: if mark and implied stop agreeing on the
       // share count, the proportional valuation mapping no longer holds.

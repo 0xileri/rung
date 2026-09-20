@@ -34,21 +34,30 @@ type AssetResponse = {
 
 // Reads the shared cache directly. A server component fetching its own API route needs a
 // correct base URL in every environment and doubles work already done in memory.
-async function getAsset(symbol: string): Promise<AssetResponse | null> {
+//
+// Mint state is fetched separately and is allowed to FAIL. It comes from a mainnet RPC that
+// rate-limits, and it is not essential: the page's valuations come from the API, and the
+// quantities are derived from the mint we actually escrow against, whose extension values
+// are known. Treating an RPC hiccup as "asset not found" produced a 404 for a page that had
+// everything it needed to render.
+async function getAsset(symbol: string) {
+  const { assets } = await getPreStocks();
+  const asset = findAsset(assets, symbol);
+  if (!asset) return null;
+
+  let mint: Awaited<ReturnType<typeof getMintState>> | null = null;
   try {
-    const { assets } = await getPreStocks();
-    const asset = findAsset(assets, symbol);
-    if (!asset) return null;
-    const mint = await getMintState(asset.contract_address);
-    return {
-      asset,
-      mint,
-      caveats: custodyCaveats(mint),
-      feedConsistent: isFeedConsistent(asset),
-    } as AssetResponse;
+    mint = await getMintState(asset.contract_address);
   } catch {
-    return null;
+    // Live issuer powers are unavailable this render; the page says so rather than 404ing.
   }
+
+  return {
+    asset,
+    mint,
+    caveats: mint ? custodyCaveats(mint) : [],
+    feedConsistent: isFeedConsistent(asset),
+  };
 }
 
 export default async function AssetPage({ params }: { params: Promise<{ symbol: string }> }) {
@@ -57,9 +66,13 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
   if (!data) notFound();
 
   const { asset, mint, caveats, feedConsistent } = data;
+  const escrow = escrowTargetFor(asset.symbol, asset.contract_address);
+  // Prefer the escrow mint's own values: those describe the token actually being locked.
+  const decimals = escrow.decimals ?? mint?.decimals ?? 9;
+  const multiplier = escrow.multiplier ?? mint?.multiplier ?? 1;
+  const feeBps = escrow.feeBps ?? mint?.transferFee.transferFeeBasisPoints ?? 0;
   const bands = valuationBands(asset.markValuation, 6);
 
-  const escrow = escrowTargetFor(asset.symbol, asset.contract_address);
   const positions = await fetchPositions();
   const open = toOpenCommitments(positions, escrow.mint);
   const curve = buildCurve(open, bands);
@@ -241,9 +254,9 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
             markPrice={asset.markPrice}
             markValuation={asset.markValuation}
             impliedValuation={asset.impliedValuation}
-            decimals={mint.decimals}
-            multiplier={mint.multiplier}
-            feeBps={mint.transferFee.transferFeeBasisPoints}
+            decimals={decimals}
+            multiplier={multiplier}
+            feeBps={feeBps}
             bands={bands}
             disabled={!feedConsistent}
           />
@@ -260,21 +273,29 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
             >
               Collateral, honestly
             </h2>
-            <ul
-              style={{
-                margin: 0,
-                paddingLeft: 16,
-                fontSize: 12,
-                lineHeight: 1.55,
-                color: 'var(--text-muted)',
-              }}
-            >
-              {caveats.map((c) => (
-                <li key={c} style={{ marginBottom: 6 }}>
-                  {c}
-                </li>
-              ))}
-            </ul>
+            {caveats.length > 0 ? (
+              <ul
+                style={{
+                  margin: 0,
+                  paddingLeft: 16,
+                  fontSize: 12,
+                  lineHeight: 1.55,
+                  color: 'var(--text-muted)',
+                }}
+              >
+                {caveats.map((c) => (
+                  <li key={c} style={{ marginBottom: 6 }}>
+                    {c}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p style={{ fontSize: 12, lineHeight: 1.55, color: 'var(--text-muted)', margin: 0 }}>
+                Live issuer permissions could not be read from the mint just now. They are
+                documented in full on the limitations page &mdash; the issuer holds permanent
+                delegate, freeze and pause authority over PreStocks mints.
+              </p>
+            )}
             <Link href="/limitations" style={{ fontSize: 12 }}>
               Read the limitations &rarr;
             </Link>

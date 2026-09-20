@@ -11,14 +11,17 @@ export const dynamic = 'force-dynamic';
 export default async function ProtectPage({ params }: { params: Promise<{ symbol: string }> }) {
   const { symbol } = await params;
 
-  let asset, mint;
+  const { assets } = await getPreStocks();
+  const asset = findAsset(assets, symbol);
+  if (!asset) notFound();
+
+  // Allowed to fail: a rate-limited mainnet RPC must not 404 a page whose valuations and
+  // escrow parameters are already available.
+  let mint: Awaited<ReturnType<typeof getMintState>> | null = null;
   try {
-    const { assets } = await getPreStocks();
-    asset = findAsset(assets, symbol);
-    if (!asset) notFound();
     mint = await getMintState(asset.contract_address);
   } catch {
-    notFound();
+    /* fall back to the escrow mint's known values below */
   }
 
   const escrow = escrowTargetFor(asset.symbol, asset.contract_address);
@@ -63,11 +66,11 @@ export default async function ProtectPage({ params }: { params: Promise<{ symbol
       <ProtectMarket
         symbol={asset.symbol}
         stockMint={escrow.mint}
-        decimals={escrow.decimals ?? mint.decimals}
+        decimals={escrow.decimals ?? mint?.decimals ?? 9}
         feeSlots={{
-          older: mint.transferFeeConfig.olderTransferFee.transferFeeBasisPoints,
-          newer: mint.transferFeeConfig.newerTransferFee.transferFeeBasisPoints,
-          newerEpoch: mint.transferFeeConfig.newerTransferFee.epoch.toString(),
+          older: mint?.transferFeeConfig.olderTransferFee.transferFeeBasisPoints ?? escrow.feeBps ?? 50,
+          newer: mint?.transferFeeConfig.newerTransferFee.transferFeeBasisPoints ?? escrow.feeBps ?? 100,
+          newerEpoch: mint?.transferFeeConfig.newerTransferFee.epoch.toString() ?? '0',
         }}
       />
 
