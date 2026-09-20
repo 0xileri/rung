@@ -5,7 +5,7 @@
  * a dark ground without shipping a second file.
  */
 export function Mark({ size = 28, reversed = false }: { size?: number; reversed?: boolean }) {
-  const base = reversed ? 'var(--paper)' : 'var(--ink)';
+  const base = reversed ? 'var(--chalk)' : 'var(--text)';
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" role="img" aria-label="Rung">
       <rect x="6" y="7" width="16" height="6" rx="3" fill={base} />
@@ -29,7 +29,7 @@ export function Wordmark({ size = 24, reversed = false }: { size?: number; rever
         fontSize: size,
         lineHeight: 1,
         letterSpacing: '-0.01em',
-        color: reversed ? 'var(--paper)' : 'var(--text)',
+        color: reversed ? 'var(--chalk)' : 'var(--text)',
       }}
     >
       Rung

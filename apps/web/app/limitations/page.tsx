@@ -19,7 +19,7 @@ const section = (title: string, body: React.ReactNode) => (
 
 export default function Limitations() {
   return (
-    <div className="wrap" style={{ paddingTop: 48, paddingBottom: 56, maxWidth: 760 }}>
+    <div className="wrap enter" style={{ paddingTop: 48, paddingBottom: 56, maxWidth: 760 }}>
       <h1 style={{ fontSize: 44, marginBottom: 12 }}>Known limitations</h1>
       <p style={{ fontSize: 16, color: 'var(--text-faint)', marginTop: 0, marginBottom: 40 }}>
         Written plainly, because several of these qualify claims you would otherwise take at

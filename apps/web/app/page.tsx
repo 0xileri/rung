@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { Fragments } from '../components/Fragments';
+import { Mark } from '../components/Mark';
 import { pct, valuation } from '../lib/format';
 import { relativeTo, isFeedConsistent } from '../../../packages/sdk/src/valuation.ts';
 import { getPreStocks } from '../lib/prestocks-cache';
@@ -31,56 +33,73 @@ export default async function Home() {
   const featured = assets.find((a) => a.symbol === 'OPENAI') ?? assets[0];
 
   return (
-    <div className="wrap" style={{ paddingTop: 56, paddingBottom: 56 }}>
-      <section style={{ maxWidth: 720, marginBottom: 48 }}>
-        <h1 style={{ fontSize: 58, marginBottom: 20 }}>
-          Name your valuation.
-          <br />
-          Put capital behind it.
-        </h1>
-        <p style={{ fontSize: 18, lineHeight: 1.55, color: 'var(--text-muted)', margin: '0 0 12px' }}>
-          Lock USDC at the private-company valuation where you would actually be willing to own
-          exposure. Get paid a premium when a PreStocks holder takes the other side.
-        </p>
-        <p style={{ fontSize: 15, lineHeight: 1.55, color: 'var(--text-faint)', margin: '0 0 28px' }}>
-          Your commitment joins a live, capital-backed demand curve showing what people will
-          actually pay at each valuation &mdash; not what they say in a poll.
-        </p>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          {featured && (
-            <Link href={`/asset/${featured.symbol}`} className="btn" style={{ textDecoration: 'none' }}>
-              Explore {featured.name.replace(' PreStocks', '')}
-            </Link>
-          )}
-          <Link
-            href="/limitations"
-            className="btn btn-quiet"
-            style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+    <div className="wrap" style={{ paddingTop: 56, paddingBottom: 64 }}>
+      <section className="hero-shell enter" style={{ maxWidth: 760, marginBottom: 56 }}>
+        <div className="hero-glow" aria-hidden />
+        <Fragments density={0.4} />
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <div
+            className="float-mark enter enter-delay-1"
+            style={{ display: 'inline-flex', marginBottom: 22 }}
           >
-            How it works
-          </Link>
-        </div>
+            <Mark size={44} />
+          </div>
+          <h1 className="enter enter-delay-1" style={{ fontSize: 'clamp(40px, 7vw, 58px)', marginBottom: 20 }}>
+            Name your valuation.
+            <br />
+            Put capital behind it.
+          </h1>
+          <p
+            className="enter enter-delay-2"
+            style={{ fontSize: 18, lineHeight: 1.55, color: 'var(--text-muted)', margin: '0 0 12px' }}
+          >
+            Lock USDC at the private-company valuation where you would actually be willing to own
+            exposure. Get paid a premium when a PreStocks holder takes the other side.
+          </p>
+          <p
+            className="enter enter-delay-2"
+            style={{ fontSize: 15, lineHeight: 1.55, color: 'var(--text-faint)', margin: '0 0 28px' }}
+          >
+            Your commitment joins a live, capital-backed demand curve showing what people will
+            actually pay at each valuation &mdash; not what they say in a poll.
+          </p>
+          <div className="enter enter-delay-3" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {featured && (
+              <Link href={`/asset/${featured.symbol}`} className="btn" style={{ textDecoration: 'none' }}>
+                Explore {featured.name.replace(' PreStocks', '')}
+              </Link>
+            )}
+            <Link
+              href="/limitations"
+              className="btn btn-quiet"
+              style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+            >
+              How it works
+            </Link>
+          </div>
 
-        <ul
-          style={{
-            display: 'flex',
-            gap: 22,
-            listStyle: 'none',
-            padding: 0,
-            margin: '32px 0 0',
-            flexWrap: 'wrap',
-            fontSize: 12,
-            color: 'var(--text-faint)',
-          }}
-        >
-          <li>Collateral in program vaults</li>
-          <li>PreStocks-native</li>
-          <li>Fractional</li>
-          <li>No oracle in the settlement path</li>
-        </ul>
+          <ul
+            className="enter enter-delay-4"
+            style={{
+              display: 'flex',
+              gap: 22,
+              listStyle: 'none',
+              padding: 0,
+              margin: '32px 0 0',
+              flexWrap: 'wrap',
+              fontSize: 12,
+              color: 'var(--text-faint)',
+            }}
+          >
+            <li>Collateral in program vaults</li>
+            <li>PreStocks-native</li>
+            <li>Fractional</li>
+            <li>No oracle in the settlement path</li>
+          </ul>
+        </div>
       </section>
 
-      <section>
+      <section className="enter enter-delay-3">
         <h2 className="label" style={{ marginBottom: 16 }}>
           PreStocks markets
           {stale && (
@@ -103,19 +122,20 @@ export default async function Home() {
               gap: 14,
             }}
           >
-            {assets.map((a) => {
+            {assets.map((a, i) => {
               const delta = relativeTo(a.impliedValuation, a.markValuation);
               const name = a.name.replace(' PreStocks', '');
               return (
                 <Link
                   key={a.symbol}
                   href={`/asset/${a.symbol}`}
-                  className="card"
+                  className="card card-lift"
                   style={{
                     padding: '18px 20px',
                     textDecoration: 'none',
                     color: 'inherit',
                     display: 'block',
+                    animationDelay: `${Math.min(i, 8) * 40}ms`,
                   }}
                 >
                   <div

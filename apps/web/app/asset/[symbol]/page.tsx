@@ -79,7 +79,7 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
   const marketVsMark = relativeTo(asset.impliedValuation, asset.markValuation);
 
   return (
-    <div className="wrap" style={{ paddingTop: 36, paddingBottom: 48 }}>
+    <div className="wrap enter" style={{ paddingTop: 36, paddingBottom: 48 }}>
       <div
         style={{
           display: 'flex',

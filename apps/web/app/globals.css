@@ -13,13 +13,21 @@ body {
   padding: 0;
 }
 
+html {
+  color-scheme: dark;
+}
+
 body {
-  background: var(--paper);
+  background:
+    radial-gradient(1200px 600px at 12% -10%, rgba(201, 138, 60, 0.07), transparent 55%),
+    radial-gradient(900px 500px at 90% 0%, rgba(95, 154, 155, 0.05), transparent 50%),
+    var(--paper);
   color: var(--text);
   font-family: var(--font-sans);
   font-size: 15px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
 }
 
 h1,
@@ -29,17 +37,16 @@ h3 {
   font-weight: 400;
   line-height: 1.05;
   margin: 0;
+  letter-spacing: -0.01em;
 }
 
 a {
   color: var(--amber-ink);
+  transition: color var(--dur-fast) var(--ease-soft);
 }
 
-/* Every figure in the product is monospaced and tabular: a raw PreStock quantity carries
-   nine decimals, and a price that reflows the row beside it as it ticks is unreadable. */
-.fig {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
+a:hover {
+  color: var(--amber-fill);
 }
 
 .label {
@@ -51,22 +58,49 @@ a {
 }
 
 .card {
-  background: var(--surface);
+  background: linear-gradient(180deg, var(--surface-elevated) 0%, var(--surface) 100%);
   border: 1px solid var(--line);
   border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
+  transition:
+    transform var(--dur) var(--ease-out),
+    border-color var(--dur) var(--ease-soft),
+    box-shadow var(--dur) var(--ease-soft);
+}
+
+.card-lift:hover,
+a.card:hover {
+  transform: translateY(-3px);
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-lift), var(--glow-amber);
 }
 
 .btn {
   font-family: var(--font-sans);
   font-size: 14px;
   font-weight: 500;
-  color: var(--ink);
+  color: #0e1116;
   background: var(--amber-fill);
   border: none;
   border-radius: var(--radius-sm);
   padding: 13px 18px;
   min-height: 44px;
   cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-soft),
+    filter var(--dur-fast) var(--ease-soft);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12) inset;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+  box-shadow: 0 8px 24px rgba(201, 138, 60, 0.28);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .btn:disabled {
@@ -78,6 +112,14 @@ a {
   background: transparent;
   color: var(--text);
   border: 1px solid var(--line);
+  box-shadow: none;
+}
+
+.btn-quiet:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: none;
+  filter: none;
 }
 
 input,
@@ -91,6 +133,14 @@ select {
   padding: 10px 12px;
   min-height: 44px;
   width: 100%;
+  transition: border-color var(--dur-fast) var(--ease-soft), box-shadow var(--dur-fast) var(--ease-soft);
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--amber-fill);
+  box-shadow: 0 0 0 3px var(--amber-glow-ring);
 }
 
 .wrap {
@@ -105,13 +155,6 @@ select {
   }
 }
 
-/*
- * Two-column layout for the asset and protect pages.
- *
- * This lived as an inline style, which cannot carry a media query, so the fixed 372px
- * sidebar never collapsed: on a 375px viewport the content column resolved to 0px and the
- * Commitment Curve rendered at zero width. Below 900px the columns stack instead.
- */
 .split {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 372px;
@@ -125,9 +168,226 @@ select {
   }
 }
 
-/* Stat rows and nav wrap rather than forcing the page wider than the screen. */
 @media (max-width: 560px) {
   .wrap h1 {
     font-size: clamp(30px, 8vw, 44px);
+  }
+}
+
+/* ——— Site chrome ——— */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(7, 9, 12, 0.82);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  border-bottom: 1px solid rgba(38, 44, 54, 0.9);
+}
+
+.site-nav a {
+  position: relative;
+  color: var(--text-muted) !important;
+  transition: color var(--dur-fast) var(--ease-soft);
+}
+
+.site-nav a:hover {
+  color: var(--text) !important;
+}
+
+.site-nav a::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  height: 1px;
+  background: var(--amber-fill);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--dur) var(--ease-out);
+  opacity: 0.85;
+}
+
+.site-nav a:hover::after {
+  transform: scaleX(1);
+}
+
+.site-footer {
+  border-top: 1px solid var(--line);
+  margin-top: 72px;
+  padding: 32px 0 40px;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.25));
+}
+
+/* ——— Motion: enter / float ——— */
+@keyframes rung-enter {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rung-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes rung-float-slow {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(0, -6px, 0) rotate(1.5deg);
+  }
+}
+
+@keyframes rung-bar-in {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes rung-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translate3d(6px, -10px, 0);
+    opacity: 0.7;
+  }
+}
+
+@keyframes rung-shimmer {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+.enter {
+  animation: rung-enter 520ms var(--ease-out) both;
+}
+
+.enter-delay-1 {
+  animation-delay: 70ms;
+}
+.enter-delay-2 {
+  animation-delay: 140ms;
+}
+.enter-delay-3 {
+  animation-delay: 210ms;
+}
+.enter-delay-4 {
+  animation-delay: 280ms;
+}
+
+.float {
+  animation: rung-float 5.5s var(--ease-soft) infinite;
+  will-change: transform;
+}
+
+.float-mark {
+  animation: rung-float-slow 7s var(--ease-soft) infinite;
+  will-change: transform;
+  filter: drop-shadow(0 12px 28px rgba(201, 138, 60, 0.18));
+}
+
+.curve-bar {
+  transform-origin: left center;
+  animation: rung-bar-in 700ms var(--ease-out) both;
+}
+
+.hero-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.hero-glow {
+  pointer-events: none;
+  position: absolute;
+  inset: -40px -20px auto auto;
+  width: min(420px, 70vw);
+  height: 280px;
+  background: radial-gradient(circle at 70% 30%, rgba(201, 138, 60, 0.16), transparent 65%);
+  z-index: -1;
+  filter: blur(8px);
+}
+
+/* ——— Fragments (CSS shards) ——— */
+.fragments {
+  pointer-events: none;
+  position: absolute;
+  inset: -24px -8% -40px 40%;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.fragment {
+  position: absolute;
+  background: linear-gradient(135deg, rgba(201, 138, 60, 0.55), rgba(243, 241, 236, 0.12));
+  border-radius: 1px;
+  opacity: 0.45;
+  animation: rung-drift 9s var(--ease-soft) infinite;
+  box-shadow: 0 0 12px rgba(201, 138, 60, 0.15);
+}
+
+.fragment:nth-child(odd) {
+  background: linear-gradient(145deg, rgba(243, 241, 236, 0.35), rgba(201, 138, 60, 0.25));
+  animation-duration: 11s;
+}
+
+.fragment:nth-child(3n) {
+  animation-duration: 13s;
+  animation-delay: -3s;
+}
+
+.fragment-canvas {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enter,
+  .enter-delay-1,
+  .enter-delay-2,
+  .enter-delay-3,
+  .enter-delay-4,
+  .float,
+  .float-mark,
+  .curve-bar,
+  .fragment {
+    animation: none !important;
+  }
+
+  .card-lift:hover,
+  a.card:hover,
+  .btn:hover:not(:disabled) {
+    transform: none;
+  }
+
+  .fragments {
+    display: none;
   }
 }
