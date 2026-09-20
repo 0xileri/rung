@@ -12,7 +12,7 @@
     "test:program": "anchor test"
   },
   "devDependencies": {
-    "@coral-xyz/anchor": "^1.2.0",
+    "@coral-xyz/anchor": "^0.32.1",
     "@solana/spl-token": "^0.4.9",
     "@solana/web3.js": "^1.95.8",
     "chai": "^4.5.0",
