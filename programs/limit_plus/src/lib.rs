@@ -33,7 +33,7 @@ pub mod utils;
 
 use instructions::*;
 
-declare_id!("Lmt1111111111111111111111111111111111111111");
+declare_id!("6kqka5NWofo1cm6bm5JMhWbQgHeR6YT23qTvwnusSwpM");
 
 #[program]
 pub mod limit_plus {

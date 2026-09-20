@@ -27,12 +27,15 @@ pub fn transfer_tokens<'info>(
         to,
         authority,
     };
+    // Anchor 1.x takes the program's id here rather than its AccountInfo, which is the one
+    // breaking change from 0.31 that affects this program.
+    let program_id = token_program.key();
     match signer_seeds {
         Some(seeds) => transfer_checked(
-            CpiContext::new_with_signer(token_program, accounts, seeds),
+            CpiContext::new_with_signer(program_id, accounts, seeds),
             amount,
             decimals,
         ),
-        None => transfer_checked(CpiContext::new(token_program, accounts), amount, decimals),
+        None => transfer_checked(CpiContext::new(program_id, accounts), amount, decimals),
     }
 }

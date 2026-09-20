@@ -4,14 +4,11 @@
 resolution = true
 skip-lint = false
 
-[programs.localnet]
-limit_plus = "Lmt1111111111111111111111111111111111111111"
-
 [programs.devnet]
-limit_plus = "Lmt1111111111111111111111111111111111111111"
+limit_plus = "6kqka5NWofo1cm6bm5JMhWbQgHeR6YT23qTvwnusSwpM"
 
-[registry]
-url = "https://api.apr.dev"
+[programs.localnet]
+limit_plus = "6kqka5NWofo1cm6bm5JMhWbQgHeR6YT23qTvwnusSwpM"
 
 [provider]
 cluster = "devnet"
@@ -19,3 +16,5 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[hooks]

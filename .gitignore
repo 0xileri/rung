@@ -7,3 +7,7 @@ dist/
 .env.local
 test-ledger/
 *.log
+
+# Anchor build artifacts (the .so is rebuildable; the program keypair is kept below)
+target/
+!target/deploy/limit_plus-keypair.json

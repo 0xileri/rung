@@ -146,11 +146,30 @@ describe('limit-plus', () => {
       .rpc();
   }
 
+  /**
+   * Fund a test keypair from the provider wallet.
+   *
+   * Not `requestAirdrop`: this suite runs against devnet, where the faucet is capped per
+   * request and rate-limited across them, so airdropping to each keypair is unreliable and
+   * would make the suite fail for reasons unrelated to the program. The provider wallet is
+   * funded once, out of band, and pays for everything from there.
+   */
+  async function fund(to: PublicKey, sol: number) {
+    const tx = new anchor.web3.Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: admin.publicKey,
+        toPubkey: to,
+        lamports: Math.round(sol * LAMPORTS_PER_SOL),
+      }),
+    );
+    await provider.sendAndConfirm(tx, []);
+  }
+
   before(async () => {
-    for (const kp of [maker, taker]) {
-      const sig = await connection.requestAirdrop(kp.publicKey, 5 * LAMPORTS_PER_SOL);
-      await connection.confirmTransaction(sig, 'confirmed');
-    }
+    // Enough for account rent across the suite: each position costs roughly 0.007 SOL in
+    // rent for its Position account and two vaults, and the maker creates all of them.
+    await fund(maker.publicKey, 1.0);
+    await fund(taker.publicKey, 0.3);
 
     // USDC stand-in: legacy SPL Token, no extensions, exactly like the real thing.
     quoteMint = await createMint(connection, admin, admin.publicKey, null, QUOTE_DECIMALS, undefined, undefined, TOKEN_PROGRAM_ID);
