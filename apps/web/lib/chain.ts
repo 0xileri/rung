@@ -61,9 +61,23 @@ export async function fetchPositions(conn = connection()): Promise<Position[]> {
   let accounts;
   try {
     const coder = new BorshAccountsCoder(idl as never);
-    const discriminator = BorshAccountsCoder.accountDiscriminator('Position');
+    // Anchor 0.30+ ships each account's discriminator in the IDL rather than deriving it
+    // from the name, so read it from there instead of recomputing a hash that might not
+    // match what the program actually writes.
+    const entry = (idl as { accounts: { name: string; discriminator: number[] }[] }).accounts.find(
+      (a) => a.name === 'Position',
+    );
+    if (!entry) return [];
     accounts = await conn.getProgramAccounts(PROGRAM_ID, {
-      filters: [{ memcmp: { offset: 0, bytes: Buffer.from(discriminator).toString('base64'), encoding: 'base64' } }],
+      filters: [
+        {
+          memcmp: {
+            offset: 0,
+            bytes: Buffer.from(entry.discriminator).toString('base64'),
+            encoding: 'base64',
+          },
+        },
+      ],
     });
 
     return accounts.map(({ pubkey, account }) => {
