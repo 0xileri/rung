@@ -9,7 +9,9 @@
   ],
   "scripts": {
     "test:sdk": "node --test \"packages/sdk/test/**/*.test.ts\"",
-    "test:program": "anchor test"
+    "test:program": "anchor test",
+    "build": "next build apps/web",
+    "start": "next start apps/web -H 0.0.0.0 -p ${PORT:-3000}"
   },
   "devDependencies": {
     "@coral-xyz/anchor": "^0.32.1",
