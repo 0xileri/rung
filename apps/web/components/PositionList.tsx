@@ -31,10 +31,13 @@ export function PositionList() {
   const { publicKey, connected } = useWallet();
   const { setVisible } = useWalletModal();
   const [positions, setPositions] = useState<Position[] | null>(null);
+  // Kept so an empty result can distinguish "you have none" from "none exist at all".
+  const [totalOnChain, setTotalOnChain] = useState(0);
 
   const load = useCallback(async () => {
     if (!publicKey) return;
     const all = await fetchPositions(connection);
+    setTotalOnChain(all.length);
     const mine = all.filter(
       (p) => p.maker === publicKey.toBase58() || p.taker === publicKey.toBase58(),
     );
@@ -67,11 +70,32 @@ export function PositionList() {
   }
 
   if (positions.length === 0) {
+    // "No positions" is ambiguous when the cause is being on the wrong account, which is easy
+    // to do with multiple wallets and invisible from the screen. Naming the connected address
+    // and whether OTHER positions exist turns a dead end into a diagnosis.
     return (
-      <p className="card" style={{ padding: '20px 22px', fontSize: 14, color: 'var(--text-muted)' }}>
-        No positions yet on {CLUSTER}. Commit at a valuation, or take the other side of someone
-        else&rsquo;s commitment, and it will appear here.
-      </p>
+      <div className="card" style={{ padding: '20px 22px' }}>
+        <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
+          No positions for{' '}
+          <span className="fig" style={{ color: 'var(--text)' }}>
+            {shortKey(publicKey!.toBase58(), 6, 6)}
+          </span>{' '}
+          on {CLUSTER}.
+        </p>
+        {totalOnChain > 0 ? (
+          <p style={{ fontSize: 13, color: 'var(--text-faint)', margin: '10px 0 0', lineHeight: 1.55 }}>
+            There {totalOnChain === 1 ? 'is' : 'are'} <strong>{totalOnChain}</strong> position
+            {totalOnChain === 1 ? '' : 's'} on this deployment held by other wallets. If you
+            expected one of them here, you are probably connected as a different account than
+            the one that signed it &mdash; switch accounts in your wallet.
+          </p>
+        ) : (
+          <p style={{ fontSize: 13, color: 'var(--text-faint)', margin: '10px 0 0', lineHeight: 1.55 }}>
+            Commit at a valuation, or take the other side of someone else&rsquo;s commitment,
+            and it will appear here.
+          </p>
+        )}
+      </div>
     );
   }
 
