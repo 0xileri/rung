@@ -33,12 +33,19 @@ export function PositionList() {
   const [positions, setPositions] = useState<Position[] | null>(null);
   // Kept so an empty result can distinguish "you have none" from "none exist at all".
   const [totalOnChain, setTotalOnChain] = useState(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!publicKey) return;
-    const all = await fetchPositions(connection);
-    setTotalOnChain(all.length);
-    const mine = all.filter(
+    const result = await fetchPositions(connection);
+    if (!result.ok) {
+      setLoadError(result.detail);
+      setPositions([]);
+      return;
+    }
+    setLoadError(null);
+    setTotalOnChain(result.positions.length);
+    const mine = result.positions.filter(
       (p) => p.maker === publicKey.toBase58() || p.taker === publicKey.toBase58(),
     );
     setPositions(mine.sort((a, b) => b.createdAt - a.createdAt));
@@ -65,6 +72,17 @@ export function PositionList() {
     return (
       <p className="card" style={{ padding: '20px 22px', fontSize: 14, color: 'var(--text-muted)' }}>
         Reading positions from chain&hellip;
+      </p>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <p
+        className="card"
+        style={{ padding: '20px 22px', fontSize: 14, color: 'var(--caution)', borderColor: 'var(--caution)' }}
+      >
+        Could not read positions from chain: {loadError}
       </p>
     );
   }

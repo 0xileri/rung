@@ -71,8 +71,10 @@ export function ProtectMarket({
   );
 
   const load = useCallback(async () => {
-    const all = await fetchPositions(connection);
-    setPositions(all.filter((p) => p.status === 'Open' && p.stockMint === stockMint));
+    const result = await fetchPositions(connection);
+    setPositions(
+      result.ok ? result.positions.filter((p) => p.status === 'Open' && p.stockMint === stockMint) : [],
+    );
   }, [connection, stockMint]);
 
   useEffect(() => {

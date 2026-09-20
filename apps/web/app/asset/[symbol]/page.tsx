@@ -73,8 +73,8 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
   const feeBps = escrow.feeBps ?? mint?.transferFee.transferFeeBasisPoints ?? 0;
   const bands = valuationBands(asset.markValuation, 6);
 
-  const positions = await fetchPositions();
-  const open = toOpenCommitments(positions, escrow.mint);
+  const fetched = await fetchPositions();
+  const open = fetched.ok ? toOpenCommitments(fetched.positions, escrow.mint) : [];
   const curve = buildCurve(open, bands);
   const marketVsMark = relativeTo(asset.impliedValuation, asset.markValuation);
 
