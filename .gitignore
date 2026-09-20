@@ -10,4 +10,7 @@ test-ledger/
 
 # Anchor build artifacts (the .so is rebuildable; the program keypair is kept below)
 target/
-!target/deploy/limit_plus-keypair.json
+# NOTE: target/deploy/rung-keypair.json is the program's identity and is deliberately NOT
+# committed. Publishing it before the program is deployed would let someone else claim the
+# address. Back it up outside the repo: losing it changes the program id, which strands the
+# SOL in the buffer left by the failed devnet deploy.
