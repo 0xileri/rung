@@ -118,21 +118,30 @@ so yesterday's numbers are not evidence.
 
 ## Status
 
+**Live:** https://web-production-8b9e2.up.railway.app
+
 - Program: **18/18** tests — full lifecycle, both settlement paths, and every refusal in the
   state machine
 - SDK: **35/35** tests, pinned against live mainnet values
-- Web: production build green across seven routes; live PreStocks data end to end
 - Every instruction has a UI: commit, take the other side, exercise, cancel, settle expiry
-- Program ID: `6kqka5NWofo1cm6bm5JMhWbQgHeR6YT23qTvwnusSwpM`
 
-**Not yet deployed to devnet.** The public devnet RPC rate-limits hard enough that a 337 KB
-program upload fails partway; the deploy resumes from the buffer it left behind once a
-dedicated endpoint is configured. Until then the app runs against a local validator, where
-the full lifecycle works end to end.
+### Deployed on devnet
 
-This is **unaudited** hackathon software. The devnet demo uses a Token-2022 mint reproducing
-the real transfer-fee behaviour, labelled as a mock wherever it appears; it is not a real
-PreStock. Valuation data is live and real in every environment.
+| | |
+|---|---|
+| Program | [`6kqka5NWofo1cm6bm5JMhWbQgHeR6YT23qTvwnusSwpM`](https://explorer.solana.com/address/6kqka5NWofo1cm6bm5JMhWbQgHeR6YT23qTvwnusSwpM?cluster=devnet) |
+| Config | [`81keCkSZRierBmcXgcNBqqNTfYszRDvvgviwg4YTg8jo`](https://explorer.solana.com/address/81keCkSZRierBmcXgcNBqqNTfYszRDvvgviwg4YTg8jo?cluster=devnet) |
+| OPENAI market | [`8igHstCvuXTDbP7aJKA2CDtLhejMA18aXMmDMwd1JDtD`](https://explorer.solana.com/address/8igHstCvuXTDbP7aJKA2CDtLhejMA18aXMmDMwd1JDtD?cluster=devnet) |
+| Mock OPENAI mint | [`3Q43N1W6s77VTn2g9Tzp56p6WshVBUzRWknQeh3TVwR6`](https://explorer.solana.com/address/3Q43N1W6s77VTn2g9Tzp56p6WshVBUzRWknQeh3TVwR6?cluster=devnet) |
+| Mock USDC | [`CRUjjjByxTpUfeAhR377RTdpmravXXgSX6eTk93XxBov`](https://explorer.solana.com/address/CRUjjjByxTpUfeAhR377RTdpmravXXgSX6eTk93XxBov?cluster=devnet) |
+
+PreStocks exist only on mainnet, so the escrowed token on devnet is a **mock** — and it
+deliberately carries the same extensions as the real OpenAI PreStock: 9 decimals, a
+0.5% transfer fee and the 1.4861347 scaled-amount multiplier. A mock
+without those would demo a path the real asset never takes. It is labelled as a mock on every
+screen it appears on, and **valuation data is live from the real PreStocks API throughout**.
+
+This is **unaudited** hackathon software.
 
 ---
 
