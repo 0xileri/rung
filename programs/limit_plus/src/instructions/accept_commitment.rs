@@ -12,13 +12,13 @@ pub struct AcceptCommitment<'info> {
     pub taker: Signer<'info>,
 
     #[account(seeds = [CONFIG_SEED], bump = config.bump)]
-    pub config: Account<'info, GlobalConfig>,
+    pub config: Box<Account<'info, GlobalConfig>>,
 
     #[account(
         seeds = [MARKET_SEED, position.stock_mint.as_ref()],
         bump = market.bump,
     )]
-    pub market: Account<'info, Market>,
+    pub market: Box<Account<'info, Market>>,
 
     #[account(
         mut,
@@ -27,7 +27,7 @@ pub struct AcceptCommitment<'info> {
         has_one = stock_mint @ LimitPlusError::InvalidStockMint,
         has_one = quote_mint @ LimitPlusError::InvalidQuoteMint,
     )]
-    pub position: Account<'info, Position>,
+    pub position: Box<Account<'info, Position>>,
 
     /// CHECK: Vault authority PDA, validated by seeds.
     #[account(
@@ -36,8 +36,8 @@ pub struct AcceptCommitment<'info> {
     )]
     pub position_authority: UncheckedAccount<'info>,
 
-    pub stock_mint: InterfaceAccount<'info, Mint>,
-    pub quote_mint: InterfaceAccount<'info, Mint>,
+    pub stock_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub quote_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         mut,
@@ -45,7 +45,7 @@ pub struct AcceptCommitment<'info> {
         token::authority = taker,
         token::token_program = stock_token_program,
     )]
-    pub taker_stock_account: InterfaceAccount<'info, TokenAccount>,
+    pub taker_stock_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
@@ -53,7 +53,7 @@ pub struct AcceptCommitment<'info> {
         token::authority = taker,
         token::token_program = quote_token_program,
     )]
-    pub taker_quote_account: InterfaceAccount<'info, TokenAccount>,
+    pub taker_quote_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Premium lands here directly. The protocol never takes custody of it, so there is no
     /// path by which a matched maker fails to be paid.
@@ -63,7 +63,7 @@ pub struct AcceptCommitment<'info> {
         token::authority = position.maker,
         token::token_program = quote_token_program,
     )]
-    pub maker_quote_account: InterfaceAccount<'info, TokenAccount>,
+    pub maker_quote_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
@@ -71,7 +71,7 @@ pub struct AcceptCommitment<'info> {
         associated_token::authority = position_authority,
         associated_token::token_program = stock_token_program,
     )]
-    pub stock_vault: InterfaceAccount<'info, TokenAccount>,
+    pub stock_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         constraint = stock_token_program.key() == market.token_program @ LimitPlusError::InvalidTokenProgram,

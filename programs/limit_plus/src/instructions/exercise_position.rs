@@ -20,7 +20,7 @@ pub struct ExercisePosition<'info> {
         has_one = stock_mint @ LimitPlusError::InvalidStockMint,
         has_one = quote_mint @ LimitPlusError::InvalidQuoteMint,
     )]
-    pub position: Account<'info, Position>,
+    pub position: Box<Account<'info, Position>>,
 
     /// CHECK: Vault authority PDA, validated by seeds.
     #[account(
@@ -33,8 +33,8 @@ pub struct ExercisePosition<'info> {
     #[account(address = position.maker)]
     pub maker: UncheckedAccount<'info>,
 
-    pub stock_mint: InterfaceAccount<'info, Mint>,
-    pub quote_mint: InterfaceAccount<'info, Mint>,
+    pub stock_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub quote_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         mut,
@@ -42,7 +42,7 @@ pub struct ExercisePosition<'info> {
         associated_token::authority = position_authority,
         associated_token::token_program = quote_token_program,
     )]
-    pub quote_vault: InterfaceAccount<'info, TokenAccount>,
+    pub quote_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
@@ -50,7 +50,7 @@ pub struct ExercisePosition<'info> {
         associated_token::authority = position_authority,
         associated_token::token_program = stock_token_program,
     )]
-    pub stock_vault: InterfaceAccount<'info, TokenAccount>,
+    pub stock_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
@@ -58,7 +58,7 @@ pub struct ExercisePosition<'info> {
         token::authority = taker,
         token::token_program = quote_token_program,
     )]
-    pub taker_quote_account: InterfaceAccount<'info, TokenAccount>,
+    pub taker_quote_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// The maker may never have held this PreStock before, so the receiving account is
     /// created on demand rather than making exercise fail on a missing account.
@@ -69,7 +69,7 @@ pub struct ExercisePosition<'info> {
         associated_token::authority = maker,
         associated_token::token_program = stock_token_program,
     )]
-    pub maker_stock_account: InterfaceAccount<'info, TokenAccount>,
+    pub maker_stock_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub stock_token_program: Interface<'info, TokenInterface>,
     pub quote_token_program: Interface<'info, TokenInterface>,

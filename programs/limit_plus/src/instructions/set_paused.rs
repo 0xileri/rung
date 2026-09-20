@@ -14,7 +14,7 @@ pub struct SetPaused<'info> {
         bump = config.bump,
         has_one = admin @ LimitPlusError::Unauthorized,
     )]
-    pub config: Account<'info, GlobalConfig>,
+    pub config: Box<Account<'info, GlobalConfig>>,
 }
 
 /// Halt new commitments and new matches protocol-wide.

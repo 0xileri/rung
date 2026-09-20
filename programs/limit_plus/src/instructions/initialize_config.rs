@@ -16,9 +16,9 @@ pub struct InitializeConfig<'info> {
         seeds = [CONFIG_SEED],
         bump,
     )]
-    pub config: Account<'info, GlobalConfig>,
+    pub config: Box<Account<'info, GlobalConfig>>,
 
-    pub quote_mint: InterfaceAccount<'info, Mint>,
+    pub quote_mint: Box<InterfaceAccount<'info, Mint>>,
     pub quote_token_program: Interface<'info, TokenInterface>,
 
     pub system_program: Program<'info, System>,

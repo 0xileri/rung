@@ -13,14 +13,14 @@ pub struct SetMarketEnabled<'info> {
         bump = config.bump,
         has_one = admin @ LimitPlusError::Unauthorized,
     )]
-    pub config: Account<'info, GlobalConfig>,
+    pub config: Box<Account<'info, GlobalConfig>>,
 
     #[account(
         mut,
         seeds = [MARKET_SEED, market.stock_mint.as_ref()],
         bump = market.bump,
     )]
-    pub market: Account<'info, Market>,
+    pub market: Box<Account<'info, Market>>,
 }
 
 /// Wind a market down without stranding anyone.

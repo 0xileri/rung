@@ -14,7 +14,7 @@ pub struct CreateCommitment<'info> {
     pub maker: Signer<'info>,
 
     #[account(seeds = [CONFIG_SEED], bump = config.bump)]
-    pub config: Account<'info, GlobalConfig>,
+    pub config: Box<Account<'info, GlobalConfig>>,
 
     #[account(
         seeds = [MARKET_SEED, stock_mint.key().as_ref()],
@@ -22,7 +22,7 @@ pub struct CreateCommitment<'info> {
         constraint = market.stock_mint == stock_mint.key() @ LimitPlusError::InvalidMarket,
         constraint = market.token_program == stock_token_program.key() @ LimitPlusError::InvalidTokenProgram,
     )]
-    pub market: Account<'info, Market>,
+    pub market: Box<Account<'info, Market>>,
 
     #[account(
         init,
@@ -31,7 +31,7 @@ pub struct CreateCommitment<'info> {
         seeds = [POSITION_SEED, maker.key().as_ref(), &nonce.to_le_bytes()],
         bump,
     )]
-    pub position: Account<'info, Position>,
+    pub position: Box<Account<'info, Position>>,
 
     /// CHECK: Vault authority PDA. Carries no data; it exists so the vaults are owned by a
     /// program-derived authority rather than any keypair a human could hold.
@@ -41,10 +41,10 @@ pub struct CreateCommitment<'info> {
     )]
     pub position_authority: UncheckedAccount<'info>,
 
-    pub stock_mint: InterfaceAccount<'info, Mint>,
+    pub stock_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(constraint = quote_mint.key() == config.quote_mint @ LimitPlusError::InvalidQuoteMint)]
-    pub quote_mint: InterfaceAccount<'info, Mint>,
+    pub quote_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         mut,
@@ -52,7 +52,7 @@ pub struct CreateCommitment<'info> {
         token::authority = maker,
         token::token_program = quote_token_program,
     )]
-    pub maker_quote_account: InterfaceAccount<'info, TokenAccount>,
+    pub maker_quote_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         init,
@@ -61,7 +61,7 @@ pub struct CreateCommitment<'info> {
         associated_token::authority = position_authority,
         associated_token::token_program = quote_token_program,
     )]
-    pub quote_vault: InterfaceAccount<'info, TokenAccount>,
+    pub quote_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// Created now, while the maker is already paying rent, so accepting is a single
     /// transfer for the taker and cannot fail on a missing vault.
@@ -72,7 +72,7 @@ pub struct CreateCommitment<'info> {
         associated_token::authority = position_authority,
         associated_token::token_program = stock_token_program,
     )]
-    pub stock_vault: InterfaceAccount<'info, TokenAccount>,
+    pub stock_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub stock_token_program: Interface<'info, TokenInterface>,
     pub quote_token_program: Interface<'info, TokenInterface>,

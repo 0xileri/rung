@@ -15,7 +15,7 @@ pub struct AddMarket<'info> {
         bump = config.bump,
         has_one = admin @ LimitPlusError::Unauthorized,
     )]
-    pub config: Account<'info, GlobalConfig>,
+    pub config: Box<Account<'info, GlobalConfig>>,
 
     #[account(
         init,
@@ -24,9 +24,9 @@ pub struct AddMarket<'info> {
         seeds = [MARKET_SEED, stock_mint.key().as_ref()],
         bump,
     )]
-    pub market: Account<'info, Market>,
+    pub market: Box<Account<'info, Market>>,
 
-    pub stock_mint: InterfaceAccount<'info, Mint>,
+    pub stock_mint: Box<InterfaceAccount<'info, Mint>>,
     /// Pinned into the market so this mint can only ever be moved by this program.
     pub stock_token_program: Interface<'info, TokenInterface>,
 

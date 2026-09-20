@@ -17,7 +17,7 @@ pub struct CancelCommitment<'info> {
         has_one = maker @ LimitPlusError::Unauthorized,
         has_one = quote_mint @ LimitPlusError::InvalidQuoteMint,
     )]
-    pub position: Account<'info, Position>,
+    pub position: Box<Account<'info, Position>>,
 
     /// CHECK: Vault authority PDA, validated by seeds.
     #[account(
@@ -26,7 +26,7 @@ pub struct CancelCommitment<'info> {
     )]
     pub position_authority: UncheckedAccount<'info>,
 
-    pub quote_mint: InterfaceAccount<'info, Mint>,
+    pub quote_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         mut,
@@ -34,7 +34,7 @@ pub struct CancelCommitment<'info> {
         associated_token::authority = position_authority,
         associated_token::token_program = quote_token_program,
     )]
-    pub quote_vault: InterfaceAccount<'info, TokenAccount>,
+    pub quote_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
@@ -42,7 +42,7 @@ pub struct CancelCommitment<'info> {
         token::authority = maker,
         token::token_program = quote_token_program,
     )]
-    pub maker_quote_account: InterfaceAccount<'info, TokenAccount>,
+    pub maker_quote_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub quote_token_program: Interface<'info, TokenInterface>,
 }
