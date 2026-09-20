@@ -5,7 +5,7 @@ import { Mark, Wordmark } from '../components/Mark';
 import { WalletRoot, WalletBar } from '../components/WalletBar';
 
 export const metadata: Metadata = {
-  title: 'Limit+ — capital-backed valuations for PreStocks',
+  title: 'Rung — capital-backed valuations for PreStocks',
   description:
     'Lock USDC at the private-company valuation where you would actually own exposure. PreStocks holders pay for the right to exchange their tokens for that capital before expiry.',
   icons: [
@@ -62,7 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="wrap" style={{ fontSize: 12, color: 'var(--text-faint)', lineHeight: 1.6 }}>
             <p style={{ margin: '0 0 8px' }}>
               Experimental software, unaudited. PreStocks provide economic exposure to
-              private-company-linked assets and may be restricted in some jurisdictions. Limit+ is
+              private-company-linked assets and may be restricted in some jurisdictions. Rung is
               not investment advice.
             </p>
             <p style={{ margin: 0 }}>

@@ -4,7 +4,7 @@ import {
   getAssociatedTokenAddressSync,
 } from '@solana/spl-token';
 import { PublicKey, SystemProgram, type Connection } from '@solana/web3.js';
-import idl from '../../../target/idl/limit_plus.json';
+import idl from '../../../target/idl/rung.json';
 import { PROGRAM_ID } from './chain';
 
 /**

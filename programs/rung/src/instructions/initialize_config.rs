@@ -24,7 +24,7 @@ pub struct InitializeConfig<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<InitializeConfig>) -> Result<()> {
+pub fn initialize_config(ctx: Context<InitializeConfig>) -> Result<()> {
     let config = &mut ctx.accounts.config;
     config.admin = ctx.accounts.admin.key();
     config.quote_mint = ctx.accounts.quote_mint.key();

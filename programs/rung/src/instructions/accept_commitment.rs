@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use crate::constants::*;
-use crate::errors::LimitPlusError;
+use crate::errors::RungError;
 use crate::state::{CommitmentMatched, GlobalConfig, Market, Position, PositionStatus};
 use crate::utils::transfer_tokens;
 
@@ -24,8 +24,8 @@ pub struct AcceptCommitment<'info> {
         mut,
         seeds = [POSITION_SEED, position.maker.as_ref(), &position.nonce.to_le_bytes()],
         bump = position.bump,
-        has_one = stock_mint @ LimitPlusError::InvalidStockMint,
-        has_one = quote_mint @ LimitPlusError::InvalidQuoteMint,
+        has_one = stock_mint @ RungError::InvalidStockMint,
+        has_one = quote_mint @ RungError::InvalidQuoteMint,
     )]
     pub position: Box<Account<'info, Position>>,
 
@@ -74,7 +74,7 @@ pub struct AcceptCommitment<'info> {
     pub stock_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
-        constraint = stock_token_program.key() == market.token_program @ LimitPlusError::InvalidTokenProgram,
+        constraint = stock_token_program.key() == market.token_program @ RungError::InvalidTokenProgram,
     )]
     pub stock_token_program: Interface<'info, TokenInterface>,
     pub quote_token_program: Interface<'info, TokenInterface>,
@@ -91,21 +91,21 @@ pub struct AcceptCommitment<'info> {
 /// Because the fee rate can step at an epoch boundary between quoting and signing, clients
 /// should gross up against the *higher* of the mint's two fee slots. The transfer then
 /// clears on either side of the rollover, and any excess simply rides along with the stock.
-pub fn handler(ctx: Context<AcceptCommitment>, stock_raw_to_send: u64) -> Result<()> {
-    require!(!ctx.accounts.config.paused, LimitPlusError::GlobalPause);
+pub fn accept_commitment(ctx: Context<AcceptCommitment>, stock_raw_to_send: u64) -> Result<()> {
+    require!(!ctx.accounts.config.paused, RungError::GlobalPause);
     require!(
         ctx.accounts.market.accept_enabled,
-        LimitPlusError::MarketAcceptDisabled
+        RungError::MarketAcceptDisabled
     );
     require!(
         ctx.accounts.position.status == PositionStatus::Open,
-        LimitPlusError::InvalidState
+        RungError::InvalidState
     );
 
     let now = Clock::get()?.unix_timestamp;
     require!(
         !ctx.accounts.position.is_expired(now),
-        LimitPlusError::PositionExpired
+        RungError::PositionExpired
     );
 
     let required = ctx.accounts.position.stock_raw_required;
@@ -126,8 +126,8 @@ pub fn handler(ctx: Context<AcceptCommitment>, stock_raw_to_send: u64) -> Result
         .stock_vault
         .amount
         .checked_sub(before)
-        .ok_or(LimitPlusError::MathOverflow)?;
-    require!(escrowed >= required, LimitPlusError::InsufficientCollateral);
+        .ok_or(RungError::MathOverflow)?;
+    require!(escrowed >= required, RungError::InsufficientCollateral);
 
     let premium = ctx.accounts.position.premium_quote_amount;
     if premium > 0 {

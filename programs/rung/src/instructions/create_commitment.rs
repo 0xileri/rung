@@ -3,7 +3,7 @@ use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use crate::constants::*;
-use crate::errors::LimitPlusError;
+use crate::errors::RungError;
 use crate::state::{CommitmentCreated, GlobalConfig, Market, Position, PositionStatus};
 use crate::utils::transfer_tokens;
 
@@ -19,8 +19,8 @@ pub struct CreateCommitment<'info> {
     #[account(
         seeds = [MARKET_SEED, stock_mint.key().as_ref()],
         bump = market.bump,
-        constraint = market.stock_mint == stock_mint.key() @ LimitPlusError::InvalidMarket,
-        constraint = market.token_program == stock_token_program.key() @ LimitPlusError::InvalidTokenProgram,
+        constraint = market.stock_mint == stock_mint.key() @ RungError::InvalidMarket,
+        constraint = market.token_program == stock_token_program.key() @ RungError::InvalidTokenProgram,
     )]
     pub market: Box<Account<'info, Market>>,
 
@@ -43,7 +43,7 @@ pub struct CreateCommitment<'info> {
 
     pub stock_mint: Box<InterfaceAccount<'info, Mint>>,
 
-    #[account(constraint = quote_mint.key() == config.quote_mint @ LimitPlusError::InvalidQuoteMint)]
+    #[account(constraint = quote_mint.key() == config.quote_mint @ RungError::InvalidQuoteMint)]
     pub quote_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
@@ -80,7 +80,7 @@ pub struct CreateCommitment<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(
+pub fn create_commitment(
     ctx: Context<CreateCommitment>,
     nonce: u64,
     stock_raw_required: u64,
@@ -89,20 +89,20 @@ pub fn handler(
     expiry_ts: i64,
     target_valuation_usd: u64,
 ) -> Result<()> {
-    require!(!ctx.accounts.config.paused, LimitPlusError::GlobalPause);
-    require!(ctx.accounts.market.enabled, LimitPlusError::MarketDisabled);
-    require!(stock_raw_required > 0, LimitPlusError::InvalidAmount);
-    require!(strike_quote_amount > 0, LimitPlusError::InvalidAmount);
+    require!(!ctx.accounts.config.paused, RungError::GlobalPause);
+    require!(ctx.accounts.market.enabled, RungError::MarketDisabled);
+    require!(stock_raw_required > 0, RungError::InvalidAmount);
+    require!(strike_quote_amount > 0, RungError::InvalidAmount);
 
     // Clock, not a client-supplied timestamp: expiry decides who ends up owning the
     // collateral, so it must be measured against something the caller cannot influence.
     let now = Clock::get()?.unix_timestamp;
     let horizon = expiry_ts
         .checked_sub(now)
-        .ok_or(LimitPlusError::MathOverflow)?;
+        .ok_or(RungError::MathOverflow)?;
     require!(
         (MIN_EXPIRY_HORIZON_SECS..=MAX_EXPIRY_HORIZON_SECS).contains(&horizon),
-        LimitPlusError::InvalidExpiry
+        RungError::InvalidExpiry
     );
 
     // Measure rather than assume. USDC carries no transfer fee today, but reading the
@@ -125,10 +125,10 @@ pub fn handler(
         .quote_vault
         .amount
         .checked_sub(before)
-        .ok_or(LimitPlusError::MathOverflow)?;
+        .ok_or(RungError::MathOverflow)?;
     require!(
         escrowed >= strike_quote_amount,
-        LimitPlusError::InsufficientCollateral
+        RungError::InsufficientCollateral
     );
 
     let position = &mut ctx.accounts.position;

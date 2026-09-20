@@ -348,7 +348,7 @@ export function CommitPanel({
       <p style={{ fontSize: 11, lineHeight: 1.5, color: '#8B9099', margin: '16px 0 14px' }}>
         The strike is fixed at creation. If {symbol}&rsquo;s valuation changes afterwards, this
         agreement does not change with it. The round-trip transfer fee is charged by the mint,
-        not by Limit+, and is not refunded.
+        not by Rung, and is not refunded.
       </p>
 
       <label

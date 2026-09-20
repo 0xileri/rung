@@ -1,7 +1,7 @@
 /**
  * Display formatting.
  *
- * Kept apart from the settlement math in @limit-plus/sdk on purpose: everything here is
+ * Kept apart from the settlement math in @rung/sdk on purpose: everything here is
  * lossy by design (rounding, abbreviating, choosing significant digits), and none of it may
  * ever feed back into an amount the program stores.
  */

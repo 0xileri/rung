@@ -1,10 +1,10 @@
 import { BorshAccountsCoder } from '@coral-xyz/anchor';
 import { Connection, PublicKey } from '@solana/web3.js';
 import type { OpenCommitment } from '../../../packages/sdk/src/commitment-curve.ts';
-import idl from '../../../target/idl/limit_plus.json';
+import idl from '../../../target/idl/rung.json';
 
 /**
- * Reading Limit+ positions off-chain.
+ * Reading Rung positions off-chain.
  *
  * The Commitment Curve is built from chain state alone rather than from an indexer's own
  * record of what each position meant, which is why `target_valuation_usd` rides on the

@@ -1,4 +1,4 @@
-//! Limit+ — a capital-backed valuation market for PreStocks on Solana.
+//! Rung — a capital-backed valuation market for PreStocks on Solana.
 //!
 //! A valuation buyer locks USDC at the private-company valuation where they would actually
 //! be willing to own exposure. A PreStock holder locks the matching tokens, pays a premium,
@@ -36,16 +36,16 @@ use instructions::*;
 declare_id!("6kqka5NWofo1cm6bm5JMhWbQgHeR6YT23qTvwnusSwpM");
 
 #[program]
-pub mod limit_plus {
+pub mod rung {
     use super::*;
 
     pub fn initialize_config(ctx: Context<InitializeConfig>) -> Result<()> {
-        instructions::initialize_config::handler(ctx)
+        instructions::initialize_config::initialize_config(ctx)
     }
 
     /// Allowlist a PreStock mint. Admin-only: the PreStocks API is discovery, not consent.
     pub fn add_market(ctx: Context<AddMarket>, symbol: String) -> Result<()> {
-        instructions::add_market::handler(ctx, symbol)
+        instructions::add_market::add_market(ctx, symbol)
     }
 
     pub fn set_market_enabled(
@@ -53,11 +53,11 @@ pub mod limit_plus {
         enabled: bool,
         accept_enabled: bool,
     ) -> Result<()> {
-        instructions::set_market_enabled::handler(ctx, enabled, accept_enabled)
+        instructions::set_market_enabled::set_market_enabled(ctx, enabled, accept_enabled)
     }
 
     pub fn set_paused(ctx: Context<SetPaused>, paused: bool) -> Result<()> {
-        instructions::set_paused::handler(ctx, paused)
+        instructions::set_paused::set_paused(ctx, paused)
     }
 
     /// Maker (valuation buyer) locks USDC against a target valuation.
@@ -70,7 +70,7 @@ pub mod limit_plus {
         expiry_ts: i64,
         target_valuation_usd: u64,
     ) -> Result<()> {
-        instructions::create_commitment::handler(
+        instructions::create_commitment::create_commitment(
             ctx,
             nonce,
             stock_raw_required,
@@ -82,21 +82,21 @@ pub mod limit_plus {
     }
 
     pub fn cancel_commitment(ctx: Context<CancelCommitment>) -> Result<()> {
-        instructions::cancel_commitment::handler(ctx)
+        instructions::cancel_commitment::cancel_commitment(ctx)
     }
 
     /// Taker (protection buyer) locks stock and pays the premium.
     pub fn accept_commitment(ctx: Context<AcceptCommitment>, stock_raw_to_send: u64) -> Result<()> {
-        instructions::accept_commitment::handler(ctx, stock_raw_to_send)
+        instructions::accept_commitment::accept_commitment(ctx, stock_raw_to_send)
     }
 
     /// Taker swaps the escrowed stock for the escrowed USDC. Only they may call it.
     pub fn exercise_position(ctx: Context<ExercisePosition>) -> Result<()> {
-        instructions::exercise_position::handler(ctx)
+        instructions::exercise_position::exercise_position(ctx)
     }
 
     /// Return both collaterals after expiry. Permissionless.
     pub fn expire_position(ctx: Context<ExpirePosition>) -> Result<()> {
-        instructions::expire_position::handler(ctx)
+        instructions::expire_position::expire_position(ctx)
     }
 }

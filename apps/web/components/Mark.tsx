@@ -1,5 +1,5 @@
 /**
- * The Limit+ mark: bars of committed capital stepping out from the market line.
+ * The Rung mark: bars of committed capital stepping out from the market line.
  *
  * Inline rather than an <img> so it inherits the surrounding colour and can be reversed on
  * a dark ground without shipping a second file.
@@ -7,7 +7,7 @@
 export function Mark({ size = 28, reversed = false }: { size?: number; reversed?: boolean }) {
   const base = reversed ? 'var(--paper)' : 'var(--ink)';
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" role="img" aria-label="Limit+">
+    <svg width={size} height={size} viewBox="0 0 48 48" role="img" aria-label="Rung">
       <rect x="6" y="7" width="16" height="6" rx="3" fill={base} />
       <rect x="6" y="17" width="24" height="6" rx="3" fill={base} />
       {/* The peak bar: where capital actually concentrates. */}
@@ -20,21 +20,19 @@ export function Mark({ size = 28, reversed = false }: { size?: number; reversed?
 }
 
 export function Wordmark({ size = 24, reversed = false }: { size?: number; reversed?: boolean }) {
+  // One word, one colour. The amber lives in the mark's peak bar rather than in the
+  // wordmark, so the accent always means the same thing: this is where capital sits.
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 1 }}>
-      <span
-        style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: size,
-          lineHeight: 1,
-          color: reversed ? 'var(--paper)' : 'var(--text)',
-        }}
-      >
-        Limit
-      </span>
-      <span style={{ fontFamily: 'var(--font-display)', fontSize: size, lineHeight: 1, color: 'var(--amber-fill)' }}>
-        +
-      </span>
+    <span
+      style={{
+        fontFamily: 'var(--font-display)',
+        fontSize: size,
+        lineHeight: 1,
+        letterSpacing: '-0.01em',
+        color: reversed ? 'var(--paper)' : 'var(--text)',
+      }}
+    >
+      Rung
     </span>
   );
 }

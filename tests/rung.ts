@@ -16,7 +16,7 @@ import {
   createMint,
 } from '@solana/spl-token';
 import { assert } from 'chai';
-import { LimitPlus } from '../target/types/limit_plus';
+import { Rung } from '../target/types/rung';
 
 /**
  * The mock PreStock carries a transfer fee, because that is the extension the *program*
@@ -42,10 +42,10 @@ const afterFee = (amount: bigint, bps = FEE_BPS) =>
 const grossUp = (required: bigint, bps = FEE_BPS) =>
   (required * 10000n) / BigInt(10000 - bps) + 2n;
 
-describe('limit-plus', () => {
+describe('rung', () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
-  const program = anchor.workspace.LimitPlus as Program<LimitPlus>;
+  const program = anchor.workspace.Rung as Program<Rung>;
   const connection = provider.connection;
 
   const admin = (provider.wallet as anchor.Wallet).payer;

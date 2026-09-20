@@ -7,7 +7,7 @@ face value.
 ## The collateral is not trustless
 
 Every matched position is fully collateralized in the sense that both legs sit in
-program-controlled vaults and no Limit+ key can move them. That is worth something, but it
+program-controlled vaults and no Rung key can move them. That is worth something, but it
 is not the whole story, and "100% collateralized" on its own would overstate it.
 
 The OpenAI PreStock mint (`PreweJYECqtQwBtpxHL171nL2K6umo692gTm7Q3rpgF`) grants its issuer:
@@ -91,5 +91,5 @@ target valuation describes the world at the moment it was created, not today.
   labelled as a mock wherever it appears; it is not a real PreStock.
 - **Live valuation data is real** in every environment, read from the PreStocks API.
 - **Jurisdiction.** PreStocks provide economic exposure to private-company-linked assets and
-  may be restricted in some jurisdictions. Limit+ is experimental software and is not
+  may be restricted in some jurisdictions. Rung is experimental software and is not
   investment advice.

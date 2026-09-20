@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "limit-plus-web",
+      "name": "rung-web",
       "runtimeExecutable": "wsl.exe",
       "runtimeArgs": ["-d", "Ubuntu", "--", "bash", "/mnt/c/Users/HP/stocklana build/scripts/wsl/dev.sh"],
       "port": 3000

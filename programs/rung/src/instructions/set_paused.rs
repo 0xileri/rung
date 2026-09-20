@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 use crate::constants::CONFIG_SEED;
-use crate::errors::LimitPlusError;
+use crate::errors::RungError;
 use crate::state::GlobalConfig;
 
 #[derive(Accounts)]
@@ -12,7 +12,7 @@ pub struct SetPaused<'info> {
         mut,
         seeds = [CONFIG_SEED],
         bump = config.bump,
-        has_one = admin @ LimitPlusError::Unauthorized,
+        has_one = admin @ RungError::Unauthorized,
     )]
     pub config: Box<Account<'info, GlobalConfig>>,
 }
@@ -22,7 +22,7 @@ pub struct SetPaused<'info> {
 /// Settlement is intentionally out of scope for this switch: `exercise_position` and
 /// `expire_position` never read the config, so pausing can stop the protocol from taking on
 /// new risk without touching collateral that is already escrowed.
-pub fn handler(ctx: Context<SetPaused>, paused: bool) -> Result<()> {
+pub fn set_paused(ctx: Context<SetPaused>, paused: bool) -> Result<()> {
     ctx.accounts.config.paused = paused;
     Ok(())
 }

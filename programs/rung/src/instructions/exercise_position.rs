@@ -3,32 +3,24 @@ use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use crate::constants::*;
-use crate::errors::LimitPlusError;
-use crate::state::{Position, PositionExpiredEvent, PositionStatus};
+use crate::errors::RungError;
+use crate::state::{Position, PositionExercised, PositionStatus};
 use crate::utils::transfer_tokens;
 
 #[derive(Accounts)]
-pub struct ExpirePosition<'info> {
-    /// Anyone. They pay the transaction fee and any rent for the receiving accounts.
+pub struct ExercisePosition<'info> {
     #[account(mut)]
-    pub cranker: Signer<'info>,
+    pub taker: Signer<'info>,
 
     #[account(
         mut,
         seeds = [POSITION_SEED, position.maker.as_ref(), &position.nonce.to_le_bytes()],
         bump = position.bump,
-        has_one = stock_mint @ LimitPlusError::InvalidStockMint,
-        has_one = quote_mint @ LimitPlusError::InvalidQuoteMint,
+        has_one = taker @ RungError::Unauthorized,
+        has_one = stock_mint @ RungError::InvalidStockMint,
+        has_one = quote_mint @ RungError::InvalidQuoteMint,
     )]
     pub position: Box<Account<'info, Position>>,
-
-    /// CHECK: Receives the returned USDC; ownership enforced by the ATA constraint below.
-    #[account(address = position.maker)]
-    pub maker: UncheckedAccount<'info>,
-
-    /// CHECK: Receives the returned stock; ownership enforced by the ATA constraint below.
-    #[account(address = position.taker)]
-    pub taker: UncheckedAccount<'info>,
 
     /// CHECK: Vault authority PDA, validated by seeds.
     #[account(
@@ -36,6 +28,10 @@ pub struct ExpirePosition<'info> {
         bump = position.authority_bump,
     )]
     pub position_authority: UncheckedAccount<'info>,
+
+    /// CHECK: Read only to receive stock; ownership is enforced by the ATA constraint below.
+    #[account(address = position.maker)]
+    pub maker: UncheckedAccount<'info>,
 
     pub stock_mint: Box<InterfaceAccount<'info, Mint>>,
     pub quote_mint: Box<InterfaceAccount<'info, Mint>>,
@@ -57,22 +53,23 @@ pub struct ExpirePosition<'info> {
     pub stock_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
-        init_if_needed,
-        payer = cranker,
-        associated_token::mint = quote_mint,
-        associated_token::authority = maker,
-        associated_token::token_program = quote_token_program,
+        mut,
+        token::mint = quote_mint,
+        token::authority = taker,
+        token::token_program = quote_token_program,
     )]
-    pub maker_quote_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub taker_quote_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
+    /// The maker may never have held this PreStock before, so the receiving account is
+    /// created on demand rather than making exercise fail on a missing account.
     #[account(
         init_if_needed,
-        payer = cranker,
+        payer = taker,
         associated_token::mint = stock_mint,
-        associated_token::authority = taker,
+        associated_token::authority = maker,
         associated_token::token_program = stock_token_program,
     )]
-    pub taker_stock_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub maker_stock_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub stock_token_program: Interface<'info, TokenInterface>,
     pub quote_token_program: Interface<'info, TokenInterface>,
@@ -80,24 +77,26 @@ pub struct ExpirePosition<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Unwind a position whose protection window has closed, returning both sides their own
-/// collateral. The maker keeps the premium either way.
+/// Exchange the escrowed stock for the escrowed USDC, atomically.
 ///
-/// Permissionless by design. If only the counterparties could trigger it, recovering your
-/// own collateral would depend on someone else staying reachable and willing; anyone can
-/// crank this, so neither side can strand the other by disappearing. Like exercise, it
-/// ignores the pause and market flags: an administrative switch must never be able to trap
-/// collateral that is already owed back.
-pub fn handler(ctx: Context<ExpirePosition>) -> Result<()> {
+/// Note what this instruction does not consult: no oracle, no price feed, no backend
+/// authorization, and no market or pause flag. The holder bought a contractual right to
+/// this exchange and only they decide whether taking it is rational, so the program has no
+/// judgement to make and nothing to look up. Loading the market here would also mean an
+/// admin could block a settlement the counterparty already paid for.
+///
+/// Both legs move in one instruction, so there is no intermediate state in which one side
+/// has been paid and the other has not.
+pub fn exercise_position(ctx: Context<ExercisePosition>) -> Result<()> {
     require!(
         ctx.accounts.position.status == PositionStatus::Matched,
-        LimitPlusError::InvalidState
+        RungError::InvalidState
     );
 
     let now = Clock::get()?.unix_timestamp;
     require!(
-        ctx.accounts.position.is_expired(now),
-        LimitPlusError::PositionNotExpired
+        !ctx.accounts.position.is_expired(now),
+        RungError::PositionExpired
     );
 
     let quote_amount = ctx.accounts.position.strike_quote_escrowed;
@@ -114,7 +113,7 @@ pub fn handler(ctx: Context<ExpirePosition>) -> Result<()> {
         ctx.accounts.quote_token_program.to_account_info(),
         ctx.accounts.quote_vault.to_account_info(),
         ctx.accounts.quote_mint.to_account_info(),
-        ctx.accounts.maker_quote_account.to_account_info(),
+        ctx.accounts.taker_quote_account.to_account_info(),
         ctx.accounts.position_authority.to_account_info(),
         quote_amount,
         ctx.accounts.quote_mint.decimals,
@@ -125,7 +124,7 @@ pub fn handler(ctx: Context<ExpirePosition>) -> Result<()> {
         ctx.accounts.stock_token_program.to_account_info(),
         ctx.accounts.stock_vault.to_account_info(),
         ctx.accounts.stock_mint.to_account_info(),
-        ctx.accounts.taker_stock_account.to_account_info(),
+        ctx.accounts.maker_stock_account.to_account_info(),
         ctx.accounts.position_authority.to_account_info(),
         stock_amount,
         ctx.accounts.stock_mint.decimals,
@@ -136,14 +135,14 @@ pub fn handler(ctx: Context<ExpirePosition>) -> Result<()> {
     position.strike_quote_escrowed = 0;
     position.stock_raw_escrowed = 0;
     position.settled_at = now;
-    position.status = PositionStatus::Expired;
+    position.status = PositionStatus::Exercised;
 
-    emit!(PositionExpiredEvent {
+    emit!(PositionExercised {
         position: position_key,
         maker: position.maker,
         taker: position.taker,
-        quote_to_maker: quote_amount,
-        stock_to_taker: stock_amount,
+        quote_to_taker: quote_amount,
+        stock_to_maker: stock_amount,
         settled_at: now,
     });
     Ok(())

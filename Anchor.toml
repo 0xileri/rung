@@ -5,10 +5,10 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-limit_plus = "6kqka5NWofo1cm6bm5JMhWbQgHeR6YT23qTvwnusSwpM"
+rung = "6kqka5NWofo1cm6bm5JMhWbQgHeR6YT23qTvwnusSwpM"
 
 [programs.localnet]
-limit_plus = "6kqka5NWofo1cm6bm5JMhWbQgHeR6YT23qTvwnusSwpM"
+rung = "6kqka5NWofo1cm6bm5JMhWbQgHeR6YT23qTvwnusSwpM"
 
 [provider]
 cluster = "devnet"

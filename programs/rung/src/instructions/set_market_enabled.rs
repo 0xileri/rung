@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 use crate::constants::{CONFIG_SEED, MARKET_SEED};
-use crate::errors::LimitPlusError;
+use crate::errors::RungError;
 use crate::state::{GlobalConfig, Market};
 
 #[derive(Accounts)]
@@ -11,7 +11,7 @@ pub struct SetMarketEnabled<'info> {
     #[account(
         seeds = [CONFIG_SEED],
         bump = config.bump,
-        has_one = admin @ LimitPlusError::Unauthorized,
+        has_one = admin @ RungError::Unauthorized,
     )]
     pub config: Box<Account<'info, GlobalConfig>>,
 
@@ -28,7 +28,7 @@ pub struct SetMarketEnabled<'info> {
 /// Both flags only ever gate *new* activity. Already-matched positions stay exercisable and
 /// expirable no matter what is set here — see `exercise_position` and `expire_position`,
 /// neither of which loads this account.
-pub fn handler(ctx: Context<SetMarketEnabled>, enabled: bool, accept_enabled: bool) -> Result<()> {
+pub fn set_market_enabled(ctx: Context<SetMarketEnabled>, enabled: bool, accept_enabled: bool) -> Result<()> {
     let market = &mut ctx.accounts.market;
     market.enabled = enabled;
     market.accept_enabled = accept_enabled;

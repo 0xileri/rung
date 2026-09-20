@@ -1,8 +1,8 @@
 {
-  "name": "limit-plus",
+  "name": "rung",
   "private": true,
   "version": "0.1.0",
-  "description": "Limit+ — a capital-backed valuation market for PreStocks on Solana",
+  "description": "Rung — a capital-backed valuation market for PreStocks on Solana",
   "workspaces": [
     "packages/*",
     "apps/*"

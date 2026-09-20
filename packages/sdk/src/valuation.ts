@@ -1,7 +1,7 @@
 /**
  * Valuation <-> strike conversion.
  *
- * Limit+ is priced in company valuations because that is how private-market investors
+ * Rung is priced in company valuations because that is how private-market investors
  * think, but a valuation is a moving reference and must never be the settlement term.
  * Everything here runs once, at creation time, to derive the *fixed* raw quantity the
  * program escrows. After that the contract is immutable and these numbers are only

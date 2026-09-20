@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-export const metadata = { title: 'Limitations — Limit+' };
+export const metadata = { title: 'Limitations — Rung' };
 
 /**
  * The limitations page, stated plainly rather than buried in a footer.
@@ -31,7 +31,7 @@ export default function Limitations() {
         <>
           <p style={{ marginTop: 0 }}>
             Every matched position is collateralized in the sense that both legs sit in
-            program-controlled vaults and no Limit+ key can move them. That is worth something.
+            program-controlled vaults and no Rung key can move them. That is worth something.
             It is not the whole story.
           </p>
           <p>
@@ -43,7 +43,7 @@ export default function Limitations() {
           </p>
           <p>
             A sharper case worth naming: if transfers are paused across a position&rsquo;s expiry,
-            the holder can lose their exercise window through no fault of their own. Limit+ does
+            the holder can lose their exercise window through no fault of their own. Rung does
             not extend the deadline to compensate.
           </p>
         </>,
@@ -57,7 +57,7 @@ export default function Limitations() {
           &mdash; and is charged both times, currently around 1% rising to 2% when the
           mint&rsquo;s scheduled fee increase takes effect. Against a premium of roughly 4.6%
           that is material, so the Reality Check shows it rather than absorbing it quietly.
-          Limit+ does not subsidise or rebate it.
+          Rung does not subsidise or rebate it.
         </p>,
       )}
 
@@ -117,7 +117,7 @@ export default function Limitations() {
           </li>
           <li>Valuation data is live and real in every environment.</li>
           <li>
-            PreStocks may be restricted in some jurisdictions. Limit+ is experimental software and
+            PreStocks may be restricted in some jurisdictions. Rung is experimental software and
             is not investment advice.
           </li>
         </ul>,

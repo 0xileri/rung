@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenInterface};
 
 use crate::constants::{CONFIG_SEED, MARKET_SEED, SYMBOL_LEN};
-use crate::errors::LimitPlusError;
+use crate::errors::RungError;
 use crate::state::{GlobalConfig, Market};
 
 #[derive(Accounts)]
@@ -13,7 +13,7 @@ pub struct AddMarket<'info> {
     #[account(
         seeds = [CONFIG_SEED],
         bump = config.bump,
-        has_one = admin @ LimitPlusError::Unauthorized,
+        has_one = admin @ RungError::Unauthorized,
     )]
     pub config: Box<Account<'info, GlobalConfig>>,
 
@@ -34,10 +34,10 @@ pub struct AddMarket<'info> {
 }
 
 /// Admin-gated on purpose: the PreStocks API returning an asset is not consent to escrow it.
-pub fn handler(ctx: Context<AddMarket>, symbol: String) -> Result<()> {
+pub fn add_market(ctx: Context<AddMarket>, symbol: String) -> Result<()> {
     require!(
         symbol.len() <= SYMBOL_LEN,
-        LimitPlusError::SymbolTooLong
+        RungError::SymbolTooLong
     );
 
     let mut padded = [0u8; SYMBOL_LEN];

@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 #[error_code]
-pub enum LimitPlusError {
+pub enum RungError {
     #[msg("Market is not registered for this stock mint")]
     InvalidMarket,
     #[msg("Market is disabled for new commitments")]

@@ -1,6 +1,6 @@
 import { PositionList } from '../../components/PositionList';
 
-export const metadata = { title: 'My Positions — Limit+' };
+export const metadata = { title: 'My Positions — Rung' };
 
 export default function PositionsPage() {
   return (

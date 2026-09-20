@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use crate::constants::*;
-use crate::errors::LimitPlusError;
+use crate::errors::RungError;
 use crate::state::{CommitmentCancelled, Position, PositionStatus};
 use crate::utils::transfer_tokens;
 
@@ -14,8 +14,8 @@ pub struct CancelCommitment<'info> {
         mut,
         seeds = [POSITION_SEED, maker.key().as_ref(), &position.nonce.to_le_bytes()],
         bump = position.bump,
-        has_one = maker @ LimitPlusError::Unauthorized,
-        has_one = quote_mint @ LimitPlusError::InvalidQuoteMint,
+        has_one = maker @ RungError::Unauthorized,
+        has_one = quote_mint @ RungError::InvalidQuoteMint,
     )]
     pub position: Box<Account<'info, Position>>,
 
@@ -52,10 +52,10 @@ pub struct CancelCommitment<'info> {
 /// Only valid while Open. Once a taker has locked stock against it the maker is committed
 /// for the full term: allowing a cancel after that would let the maker walk away from the
 /// protection they were paid a premium to provide.
-pub fn handler(ctx: Context<CancelCommitment>) -> Result<()> {
+pub fn cancel_commitment(ctx: Context<CancelCommitment>) -> Result<()> {
     require!(
         ctx.accounts.position.status == PositionStatus::Open,
-        LimitPlusError::InvalidState
+        RungError::InvalidState
     );
 
     let amount = ctx.accounts.position.strike_quote_escrowed;
