@@ -1,7 +1,7 @@
 import { BorshAccountsCoder } from '@coral-xyz/anchor';
 import { Connection, PublicKey } from '@solana/web3.js';
 import type { OpenCommitment } from '../../../packages/sdk/src/commitment-curve.ts';
-import idl from '../../../target/idl/rung.json';
+import idl from '../../../packages/sdk/idl/rung.json';
 
 /**
  * Reading Rung positions off-chain.

@@ -72,6 +72,42 @@ const program = new Program(idl, provider);
 
 const log = (...a: unknown[]) => console.log(...a);
 
+/**
+ * Retry transient RPC failures.
+ *
+ * A hosted endpoint throws a bare "fetch failed" on a dropped connection or a brief rate
+ * limit, which is indistinguishable from a real error at the call site but almost always
+ * succeeds on a second attempt. Without this a partial run leaves orphaned mints behind.
+ */
+async function retry<T>(label: string, fn: () => Promise<T>, attempts = 5): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (i === attempts) break;
+      const wait = 800 * i;
+      log(`  ${label} failed (${msg}); retrying in ${wait}ms [${i}/${attempts - 1}]`);
+      await new Promise((r) => setTimeout(r, wait));
+    }
+  }
+  throw lastErr;
+}
+
+/** Anything a previous partial run already created, so re-running does not orphan mints. */
+type Prior = { quoteMint?: string; stockMint?: string };
+function priorRun(): Prior {
+  if (!existsSync('devnet.json')) return {};
+  try {
+    const j = JSON.parse(readFileSync('devnet.json', 'utf8'));
+    return { quoteMint: j.quoteMint, stockMint: j.markets?.[SYMBOL]?.mint };
+  } catch {
+    return {};
+  }
+}
+
 async function main() {
   log(`RPC      ${RPC.split('?')[0]}`);
   log(`Wallet   ${payer.publicKey.toBase58()}`);
@@ -83,11 +119,18 @@ async function main() {
   log('');
 
   // ---- mock USDC: legacy SPL Token, no extensions, exactly like the real thing ----
-  log('Creating mock USDC (legacy SPL Token, 6 decimals)…');
-  const quoteMint = await createMint(
-    connection, payer, payer.publicKey, null, QUOTE_DECIMALS, undefined, undefined, TOKEN_PROGRAM_ID,
-  );
-  log(`  ${quoteMint.toBase58()}`);
+  const prior = priorRun();
+  let quoteMint: PublicKey;
+  if (prior.quoteMint && (await connection.getAccountInfo(new PublicKey(prior.quoteMint)))) {
+    quoteMint = new PublicKey(prior.quoteMint);
+    log(`Reusing mock USDC ${quoteMint.toBase58()}`);
+  } else {
+    log('Creating mock USDC (legacy SPL Token, 6 decimals)…');
+    quoteMint = await retry('createMint', () =>
+      createMint(connection, payer, payer.publicKey, null, QUOTE_DECIMALS, undefined, undefined, TOKEN_PROGRAM_ID),
+    );
+    log(`  ${quoteMint.toBase58()}`);
+  }
 
   // ---- mock PreStock: Token-2022 with BOTH extensions the real mint carries ----
   log('Creating mock PreStock (Token-2022, transfer fee + scaled amount)…');
@@ -116,7 +159,7 @@ async function main() {
       stockMint, STOCK_DECIMALS, payer.publicKey, null, TOKEN_2022_PROGRAM_ID,
     ),
   );
-  await provider.sendAndConfirm(tx, [stockKp]);
+  await retry('create stock mint', () => provider.sendAndConfirm(tx, [stockKp]));
   log(`  ${stockMint.toBase58()}  (${FEE_BPS}bps fee, multiplier ${MULTIPLIER})`);
 
   // ---- demo balances ----
@@ -127,8 +170,8 @@ async function main() {
   const myStock = await createAssociatedTokenAccountIdempotent(
     connection, payer, stockMint, payer.publicKey, {}, TOKEN_2022_PROGRAM_ID,
   );
-  await mintTo(connection, payer, quoteMint, myQuote, payer, 50_000n * 10n ** BigInt(QUOTE_DECIMALS), [], undefined, TOKEN_PROGRAM_ID);
-  await mintTo(connection, payer, stockMint, myStock, payer, 500n * 10n ** BigInt(STOCK_DECIMALS), [], undefined, TOKEN_2022_PROGRAM_ID);
+  await retry('mint USDC', () => mintTo(connection, payer, quoteMint, myQuote, payer, 50_000n * 10n ** BigInt(QUOTE_DECIMALS), [], undefined, TOKEN_PROGRAM_ID));
+  await retry('mint stock', () => mintTo(connection, payer, stockMint, myStock, payer, 500n * 10n ** BigInt(STOCK_DECIMALS), [], undefined, TOKEN_2022_PROGRAM_ID));
   log(`  50,000 mock USDC and 500 mock ${SYMBOL}`);
 
   // ---- protocol accounts ----
@@ -141,7 +184,7 @@ async function main() {
     log(`Config already initialized at ${configPda.toBase58()}`);
   } else {
     log('Initializing config…');
-    await program.methods
+    await retry('initializeConfig', () => program.methods
       .initializeConfig()
       .accounts({
         admin: payer.publicKey,
@@ -150,12 +193,12 @@ async function main() {
         quoteTokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
-      .rpc();
+      .rpc());
     log(`  ${configPda.toBase58()}`);
   }
 
   log(`Allowlisting ${SYMBOL}…`);
-  await program.methods
+  await retry('addMarket', () => program.methods
     .addMarket(SYMBOL)
     .accounts({
       admin: payer.publicKey,
@@ -165,7 +208,7 @@ async function main() {
       stockTokenProgram: TOKEN_2022_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
     })
-    .rpc();
+    .rpc());
   log(`  ${marketPda.toBase58()}`);
 
   const out = {

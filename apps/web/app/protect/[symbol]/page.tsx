@@ -4,6 +4,7 @@ import { ProtectMarket } from '../../../components/ProtectMarket';
 import { getPreStocks, findAsset, getMintState } from '../../../lib/prestocks-cache';
 import { relativeTo } from '../../../../../packages/sdk/src/valuation.ts';
 import { pct, valuation } from '../../../lib/format';
+import { escrowTargetFor } from '../../../lib/deployment';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +21,7 @@ export default async function ProtectPage({ params }: { params: Promise<{ symbol
     notFound();
   }
 
+  const escrow = escrowTargetFor(asset.symbol, asset.contract_address);
   const marketVsMark = relativeTo(asset.impliedValuation, asset.markValuation);
   const name = asset.name.replace(' PreStocks', '');
 
@@ -60,8 +62,8 @@ export default async function ProtectPage({ params }: { params: Promise<{ symbol
 
       <ProtectMarket
         symbol={asset.symbol}
-        stockMint={asset.contract_address}
-        decimals={mint.decimals}
+        stockMint={escrow.mint}
+        decimals={escrow.decimals ?? mint.decimals}
         feeSlots={{
           older: mint.transferFeeConfig.olderTransferFee.transferFeeBasisPoints,
           newer: mint.transferFeeConfig.newerTransferFee.transferFeeBasisPoints,

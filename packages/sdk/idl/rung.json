@@ -1,0 +1,2214 @@
+{
+  "address": "6kqka5NWofo1cm6bm5JMhWbQgHeR6YT23qTvwnusSwpM",
+  "metadata": {
+    "name": "rung",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Rung — a capital-backed valuation market for PreStocks on Solana"
+  },
+  "instructions": [
+    {
+      "name": "accept_commitment",
+      "docs": [
+        "Taker (protection buyer) locks stock and pays the premium."
+      ],
+      "discriminator": [
+        14,
+        249,
+        220,
+        223,
+        195,
+        182,
+        252,
+        156
+      ],
+      "accounts": [
+        {
+          "name": "taker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "market",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "position.stock_mint",
+                "account": "Position"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "position.maker",
+                "account": "Position"
+              },
+              {
+                "kind": "account",
+                "path": "position.nonce",
+                "account": "Position"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "position"
+              }
+            ]
+          }
+        },
+        {
+          "name": "stock_mint",
+          "relations": [
+            "position"
+          ]
+        },
+        {
+          "name": "quote_mint",
+          "relations": [
+            "position"
+          ]
+        },
+        {
+          "name": "taker_stock_account",
+          "writable": true
+        },
+        {
+          "name": "taker_quote_account",
+          "writable": true
+        },
+        {
+          "name": "maker_quote_account",
+          "docs": [
+            "Premium lands here directly. The protocol never takes custody of it, so there is no",
+            "path by which a matched maker fails to be paid."
+          ],
+          "writable": true
+        },
+        {
+          "name": "stock_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "position_authority"
+              },
+              {
+                "kind": "account",
+                "path": "stock_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "stock_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "stock_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "stock_raw_to_send",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "add_market",
+      "docs": [
+        "Allowlist a PreStock mint. Admin-only: the PreStocks API is discovery, not consent."
+      ],
+      "discriminator": [
+        41,
+        137,
+        185,
+        126,
+        69,
+        139,
+        254,
+        55
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "market",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "stock_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "stock_mint"
+        },
+        {
+          "name": "stock_token_program",
+          "docs": [
+            "Pinned into the market so this mint can only ever be moved by this program."
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "symbol",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "cancel_commitment",
+      "discriminator": [
+        36,
+        39,
+        70,
+        137,
+        71,
+        179,
+        88,
+        232
+      ],
+      "accounts": [
+        {
+          "name": "maker",
+          "signer": true,
+          "relations": [
+            "position"
+          ]
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "maker"
+              },
+              {
+                "kind": "account",
+                "path": "position.nonce",
+                "account": "Position"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "position"
+              }
+            ]
+          }
+        },
+        {
+          "name": "quote_mint",
+          "relations": [
+            "position"
+          ]
+        },
+        {
+          "name": "quote_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "position_authority"
+              },
+              {
+                "kind": "account",
+                "path": "quote_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "maker_quote_account",
+          "writable": true
+        },
+        {
+          "name": "quote_token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_commitment",
+      "docs": [
+        "Maker (valuation buyer) locks USDC against a target valuation."
+      ],
+      "discriminator": [
+        232,
+        31,
+        118,
+        65,
+        229,
+        2,
+        2,
+        170
+      ],
+      "accounts": [
+        {
+          "name": "maker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "market",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "stock_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "maker"
+              },
+              {
+                "kind": "arg",
+                "path": "nonce"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position_authority",
+          "docs": [
+            "program-derived authority rather than any keypair a human could hold."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "position"
+              }
+            ]
+          }
+        },
+        {
+          "name": "stock_mint"
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "maker_quote_account",
+          "writable": true
+        },
+        {
+          "name": "quote_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "position_authority"
+              },
+              {
+                "kind": "account",
+                "path": "quote_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "stock_vault",
+          "docs": [
+            "Created now, while the maker is already paying rent, so accepting is a single",
+            "transfer for the taker and cannot fail on a missing vault."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "position_authority"
+              },
+              {
+                "kind": "account",
+                "path": "stock_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "stock_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "stock_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "nonce",
+          "type": "u64"
+        },
+        {
+          "name": "stock_raw_required",
+          "type": "u64"
+        },
+        {
+          "name": "strike_quote_amount",
+          "type": "u64"
+        },
+        {
+          "name": "premium_quote_amount",
+          "type": "u64"
+        },
+        {
+          "name": "expiry_ts",
+          "type": "i64"
+        },
+        {
+          "name": "target_valuation_usd",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "exercise_position",
+      "docs": [
+        "Taker swaps the escrowed stock for the escrowed USDC. Only they may call it."
+      ],
+      "discriminator": [
+        30,
+        130,
+        157,
+        17,
+        128,
+        178,
+        116,
+        10
+      ],
+      "accounts": [
+        {
+          "name": "taker",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "position"
+          ]
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "position.maker",
+                "account": "Position"
+              },
+              {
+                "kind": "account",
+                "path": "position.nonce",
+                "account": "Position"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "position"
+              }
+            ]
+          }
+        },
+        {
+          "name": "maker"
+        },
+        {
+          "name": "stock_mint",
+          "relations": [
+            "position"
+          ]
+        },
+        {
+          "name": "quote_mint",
+          "relations": [
+            "position"
+          ]
+        },
+        {
+          "name": "quote_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "position_authority"
+              },
+              {
+                "kind": "account",
+                "path": "quote_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "stock_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "position_authority"
+              },
+              {
+                "kind": "account",
+                "path": "stock_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "stock_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "taker_quote_account",
+          "writable": true
+        },
+        {
+          "name": "maker_stock_account",
+          "docs": [
+            "The maker may never have held this PreStock before, so the receiving account is",
+            "created on demand rather than making exercise fail on a missing account."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "maker"
+              },
+              {
+                "kind": "account",
+                "path": "stock_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "stock_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "stock_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "expire_position",
+      "docs": [
+        "Return both collaterals after expiry. Permissionless."
+      ],
+      "discriminator": [
+        146,
+        203,
+        82,
+        231,
+        253,
+        127,
+        123,
+        214
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "docs": [
+            "Anyone. They pay the transaction fee and any rent for the receiving accounts."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "position.maker",
+                "account": "Position"
+              },
+              {
+                "kind": "account",
+                "path": "position.nonce",
+                "account": "Position"
+              }
+            ]
+          }
+        },
+        {
+          "name": "maker"
+        },
+        {
+          "name": "taker"
+        },
+        {
+          "name": "position_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "position"
+              }
+            ]
+          }
+        },
+        {
+          "name": "stock_mint",
+          "relations": [
+            "position"
+          ]
+        },
+        {
+          "name": "quote_mint",
+          "relations": [
+            "position"
+          ]
+        },
+        {
+          "name": "quote_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "position_authority"
+              },
+              {
+                "kind": "account",
+                "path": "quote_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "stock_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "position_authority"
+              },
+              {
+                "kind": "account",
+                "path": "stock_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "stock_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "maker_quote_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "maker"
+              },
+              {
+                "kind": "account",
+                "path": "quote_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "taker_stock_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "taker"
+              },
+              {
+                "kind": "account",
+                "path": "stock_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "stock_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "stock_token_program"
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_config",
+      "discriminator": [
+        208,
+        127,
+        21,
+        1,
+        194,
+        190,
+        196,
+        70
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "set_market_enabled",
+      "discriminator": [
+        206,
+        60,
+        159,
+        159,
+        62,
+        242,
+        4,
+        82
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "market",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  114,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "market.stock_mint",
+                "account": "Market"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "enabled",
+          "type": "bool"
+        },
+        {
+          "name": "accept_enabled",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "set_paused",
+      "discriminator": [
+        91,
+        60,
+        125,
+        192,
+        176,
+        225,
+        166,
+        218
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "GlobalConfig",
+      "discriminator": [
+        149,
+        8,
+        156,
+        202,
+        160,
+        252,
+        176,
+        217
+      ]
+    },
+    {
+      "name": "Market",
+      "discriminator": [
+        219,
+        190,
+        213,
+        55,
+        0,
+        227,
+        198,
+        154
+      ]
+    },
+    {
+      "name": "Position",
+      "discriminator": [
+        170,
+        188,
+        143,
+        228,
+        122,
+        64,
+        247,
+        208
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "CommitmentCancelled",
+      "discriminator": [
+        53,
+        49,
+        7,
+        194,
+        190,
+        210,
+        188,
+        126
+      ]
+    },
+    {
+      "name": "CommitmentCreated",
+      "discriminator": [
+        179,
+        58,
+        10,
+        188,
+        241,
+        19,
+        191,
+        229
+      ]
+    },
+    {
+      "name": "CommitmentMatched",
+      "discriminator": [
+        197,
+        17,
+        155,
+        157,
+        130,
+        72,
+        65,
+        78
+      ]
+    },
+    {
+      "name": "PositionExercised",
+      "discriminator": [
+        25,
+        164,
+        68,
+        6,
+        13,
+        43,
+        42,
+        185
+      ]
+    },
+    {
+      "name": "PositionExpiredEvent",
+      "discriminator": [
+        76,
+        64,
+        145,
+        0,
+        122,
+        193,
+        241,
+        81
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidMarket",
+      "msg": "Market is not registered for this stock mint"
+    },
+    {
+      "code": 6001,
+      "name": "MarketDisabled",
+      "msg": "Market is disabled for new commitments"
+    },
+    {
+      "code": 6002,
+      "name": "MarketAcceptDisabled",
+      "msg": "Market is disabled for new matches"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidState",
+      "msg": "Position is not in the required state for this action"
+    },
+    {
+      "code": 6004,
+      "name": "Unauthorized",
+      "msg": "Signer is not authorized for this action"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidExpiry",
+      "msg": "Expiry must be between the minimum and maximum horizon"
+    },
+    {
+      "code": 6006,
+      "name": "PositionExpired",
+      "msg": "Position has passed its expiry"
+    },
+    {
+      "code": 6007,
+      "name": "PositionNotExpired",
+      "msg": "Position has not yet reached its expiry"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidStockMint",
+      "msg": "Stock mint does not match the position"
+    },
+    {
+      "code": 6009,
+      "name": "InvalidQuoteMint",
+      "msg": "Quote mint does not match the protocol quote mint"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidTokenProgram",
+      "msg": "Token program does not match the one registered for this market"
+    },
+    {
+      "code": 6011,
+      "name": "InvalidAmount",
+      "msg": "Amount must be greater than zero"
+    },
+    {
+      "code": 6012,
+      "name": "InsufficientCollateral",
+      "msg": "Vault received less collateral than the position requires"
+    },
+    {
+      "code": 6013,
+      "name": "MathOverflow",
+      "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6014,
+      "name": "GlobalPause",
+      "msg": "Protocol is paused for new commitments and matches"
+    },
+    {
+      "code": 6015,
+      "name": "SymbolTooLong",
+      "msg": "Symbol exceeds the maximum length"
+    }
+  ],
+  "types": [
+    {
+      "name": "CommitmentCancelled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "position",
+            "type": "pubkey"
+          },
+          {
+            "name": "maker",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_returned",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CommitmentCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "position",
+            "type": "pubkey"
+          },
+          {
+            "name": "maker",
+            "type": "pubkey"
+          },
+          {
+            "name": "stock_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "stock_raw_required",
+            "type": "u64"
+          },
+          {
+            "name": "strike_quote_escrowed",
+            "type": "u64"
+          },
+          {
+            "name": "premium_quote_amount",
+            "type": "u64"
+          },
+          {
+            "name": "target_valuation_usd",
+            "type": "u64"
+          },
+          {
+            "name": "expiry_ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CommitmentMatched",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "position",
+            "type": "pubkey"
+          },
+          {
+            "name": "maker",
+            "type": "pubkey"
+          },
+          {
+            "name": "taker",
+            "type": "pubkey"
+          },
+          {
+            "name": "stock_raw_sent",
+            "type": "u64"
+          },
+          {
+            "name": "stock_raw_escrowed",
+            "docs": [
+              "Smaller than `stock_raw_sent` whenever a transfer fee applies."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "premium_paid",
+            "type": "u64"
+          },
+          {
+            "name": "matched_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GlobalConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_mint",
+            "docs": [
+              "The single settlement currency. Every strike and premium is denominated in it."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_token_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "paused",
+            "docs": [
+              "Halts new commitments and new matches. Deliberately does NOT halt settlement —",
+              "see `exercise_position` for why pausing must never strand escrowed collateral."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Market",
+      "docs": [
+        "Allowlist entry for one PreStock.",
+        "",
+        "The PreStocks API is discovery, not authorization (spec §48): anything it returns is a",
+        "suggestion, and only a `Market` created by the admin makes a mint eligible for escrow.",
+        "This is what stops a lookalike mint from being passed off as the real token."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "stock_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_program",
+            "docs": [
+              "Pinned at registration. PreStocks are Token-2022, but binding it explicitly means a",
+              "mint cannot later be serviced by an unexpected program."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "symbol",
+            "docs": [
+              "Right-padded ticker, carried purely so indexers can group without a side table."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
+            }
+          },
+          {
+            "name": "enabled",
+            "docs": [
+              "Gates `create_commitment`."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "accept_enabled",
+            "docs": [
+              "Gates `accept_commitment` independently, so a market can be wound down by letting",
+              "open commitments drain rather than stranding them (spec §50)."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Position",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "maker",
+            "type": "pubkey"
+          },
+          {
+            "name": "taker",
+            "docs": [
+              "`Pubkey::default()` until matched."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "stock_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "stock_token_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_token_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "nonce",
+            "docs": [
+              "Maker-chosen, making the position PDA collision-free without a global counter."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "stock_raw_required",
+            "docs": [
+              "Minimum raw stock the vault must hold for a match to be valid.",
+              "",
+              "Raw base units, never UI amounts: a ScaledUiAmount multiplier change rescales what a",
+              "UI amount means, while the raw figure stays a fixed claim on the vault."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "stock_raw_escrowed",
+            "docs": [
+              "Raw stock the vault actually received. This is what settlement pays out.",
+              "",
+              "It is measured rather than assumed because the Token-2022 transfer fee makes the",
+              "amount that arrives strictly smaller than the amount sent, by a rate that can change",
+              "at an epoch boundary."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "strike_quote_amount",
+            "type": "u64"
+          },
+          {
+            "name": "strike_quote_escrowed",
+            "type": "u64"
+          },
+          {
+            "name": "premium_quote_amount",
+            "type": "u64"
+          },
+          {
+            "name": "expiry_ts",
+            "type": "i64"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "matched_at",
+            "docs": [
+              "Zero until the corresponding transition occurs."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "settled_at",
+            "type": "i64"
+          },
+          {
+            "name": "target_valuation_usd",
+            "docs": [
+              "Company valuation, in whole USD, that the maker was targeting at creation.",
+              "",
+              "Metadata only, and never consulted during settlement (spec §13). It is kept on-chain",
+              "so the Commitment Curve can be rebuilt from chain state alone rather than trusting an",
+              "indexer's private notion of what each position meant."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "PositionStatus"
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "authority_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PositionExercised",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "position",
+            "type": "pubkey"
+          },
+          {
+            "name": "maker",
+            "type": "pubkey"
+          },
+          {
+            "name": "taker",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_to_taker",
+            "type": "u64"
+          },
+          {
+            "name": "stock_to_maker",
+            "type": "u64"
+          },
+          {
+            "name": "settled_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PositionExpiredEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "position",
+            "type": "pubkey"
+          },
+          {
+            "name": "maker",
+            "type": "pubkey"
+          },
+          {
+            "name": "taker",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_to_maker",
+            "type": "u64"
+          },
+          {
+            "name": "stock_to_taker",
+            "type": "u64"
+          },
+          {
+            "name": "settled_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PositionStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Open"
+          },
+          {
+            "name": "Matched"
+          },
+          {
+            "name": "Exercised"
+          },
+          {
+            "name": "Expired"
+          },
+          {
+            "name": "Cancelled"
+          }
+        ]
+      }
+    }
+  ],
+  "constants": [
+    {
+      "name": "CONFIG_SEED",
+      "type": "bytes",
+      "value": "[99, 111, 110, 102, 105, 103]"
+    },
+    {
+      "name": "MARKET_SEED",
+      "type": "bytes",
+      "value": "[109, 97, 114, 107, 101, 116]"
+    },
+    {
+      "name": "POSITION_AUTHORITY_SEED",
+      "type": "bytes",
+      "value": "[112, 111, 115, 105, 116, 105, 111, 110, 95, 97, 117, 116, 104, 111, 114, 105, 116, 121]"
+    },
+    {
+      "name": "POSITION_SEED",
+      "type": "bytes",
+      "value": "[112, 111, 115, 105, 116, 105, 111, 110]"
+    }
+  ]
+}

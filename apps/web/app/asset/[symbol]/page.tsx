@@ -7,6 +7,7 @@ import { buildCurve } from '../../../../../packages/sdk/src/commitment-curve.ts'
 import { valuationBands, relativeTo } from '../../../../../packages/sdk/src/valuation.ts';
 import { band, daysUntil, explorer, pct, shortKey, usd, fromQuote, valuation } from '../../../lib/format';
 import { getPreStocks, findAsset, getMintState } from '../../../lib/prestocks-cache';
+import { escrowTargetFor } from '../../../lib/deployment';
 import { custodyCaveats } from '../../../../../packages/sdk/src/prestocks.ts';
 import { isFeedConsistent } from '../../../../../packages/sdk/src/valuation.ts';
 
@@ -58,8 +59,9 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
   const { asset, mint, caveats, feedConsistent } = data;
   const bands = valuationBands(asset.markValuation, 6);
 
+  const escrow = escrowTargetFor(asset.symbol, asset.contract_address);
   const positions = await fetchPositions();
-  const open = toOpenCommitments(positions, asset.contract_address);
+  const open = toOpenCommitments(positions, escrow.mint);
   const curve = buildCurve(open, bands);
   const marketVsMark = relativeTo(asset.impliedValuation, asset.markValuation);
 
@@ -126,6 +128,25 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
           The mark and implied valuations disagree on this asset&rsquo;s share count, so the
           proportional valuation mapping does not currently hold. Commitment creation is
           disabled.
+        </p>
+      )}
+
+      {escrow.mock && (
+        <p
+          className="card"
+          style={{
+            padding: '12px 16px',
+            marginBottom: 20,
+            fontSize: 13,
+            lineHeight: 1.55,
+            color: 'var(--text-muted)',
+            borderColor: 'var(--amber-fill)',
+          }}
+        >
+          <strong>Devnet demo.</strong> PreStocks exist only on mainnet, so the token escrowed
+          here is a mock that reproduces the real mint&rsquo;s {escrow.feeBps ? escrow.feeBps / 100 : 0}%
+          transfer fee and {escrow.multiplier} scaled-amount multiplier. The valuations above are
+          live from the real PreStocks API.
         </p>
       )}
 
@@ -216,7 +237,7 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
           <CommitPanel
             symbol={asset.symbol}
-            stockMint={asset.contract_address}
+            stockMint={escrow.mint}
             markPrice={asset.markPrice}
             markValuation={asset.markValuation}
             impliedValuation={asset.impliedValuation}

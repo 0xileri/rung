@@ -9,7 +9,7 @@
  *   node scripts/check-idl-compat.cjs
  */
 const anchor = require('@coral-xyz/anchor');
-const idl = require('../target/idl/rung.json');
+const idl = require('../packages/sdk/idl/rung.json');
 
 try {
   // Constructing the coder is the real test: it builds discriminators and borsh layouts

@@ -1,0 +1,19 @@
+{
+  "cluster": "devnet",
+  "note": "PreStocks exist only on mainnet. The stock mint below is a MOCK that reproduces the real OpenAI PreStock’s transfer fee and scaled-amount extensions. Valuation data remains live from the real PreStocks API.",
+  "programId": "6kqka5NWofo1cm6bm5JMhWbQgHeR6YT23qTvwnusSwpM",
+  "config": "81keCkSZRierBmcXgcNBqqNTfYszRDvvgviwg4YTg8jo",
+  "quoteMint": "CRUjjjByxTpUfeAhR377RTdpmravXXgSX6eTk93XxBov",
+  "quoteDecimals": 6,
+  "markets": {
+    "OPENAI": {
+      "mint": "3Q43N1W6s77VTn2g9Tzp56p6WshVBUzRWknQeh3TVwR6",
+      "market": "8igHstCvuXTDbP7aJKA2CDtLhejMA18aXMmDMwd1JDtD",
+      "decimals": 9,
+      "multiplier": 1.4861347,
+      "feeBps": 50,
+      "mock": true
+    }
+  },
+  "createdAt": "2026-09-20T14:06:57.071Z"
+}
