@@ -141,9 +141,20 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
           <CommitmentCurve buckets={curve} marketValuationUsd={asset.impliedValuation} />
 
           <section className="card" style={{ padding: '26px 28px' }}>
-            <h2 className="label" style={{ marginBottom: 16 }}>
-              Open commitments
-            </h2>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                justifyContent: 'space-between',
+                gap: 12,
+                marginBottom: 16,
+              }}
+            >
+              <h2 className="label">Open commitments</h2>
+              <Link href={`/protect/${asset.symbol}`} style={{ fontSize: 12 }}>
+                Hold {asset.symbol}? Take the other side &rarr;
+              </Link>
+            </div>
             {open.length === 0 ? (
               <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
                 Nothing open yet. A commitment appears here the moment it is created, and stays

@@ -95,3 +95,44 @@ export function rawToUi(raw: bigint, decimals: number, multiplier: number): numb
 export function uiToRaw(ui: number, decimals: number, multiplier: number): bigint {
   return BigInt(Math.round((ui / multiplier) * 10 ** decimals));
 }
+
+/**
+ * The higher of the two fee slots.
+ *
+ * A quote computed now may be signed after an epoch rollover, at which point the other slot
+ * is live. Sizing against the worse of the two means the transfer clears either way; the
+ * alternative is a transaction that fails for a reason the user cannot see or fix.
+ */
+export function worstCaseTransferFee(config: TransferFeeConfig): TransferFee {
+  const a = config.olderTransferFee;
+  const b = config.newerTransferFee;
+  return b.transferFeeBasisPoints >= a.transferFeeBasisPoints ? b : a;
+}
+
+/**
+ * The amount to SEND so that at least `required` actually arrives.
+ *
+ * Inverts the fee: received = sent - ceil(sent * bps / 10_000). Solving for sent and rounding
+ * up leaves the result one unit short in some cases because the fee itself rounds up, so the
+ * answer is verified and nudged rather than trusted. Returns `required` unchanged when there
+ * is no fee.
+ *
+ * Any excess simply rides along with the escrowed stock; being a unit over is harmless, while
+ * being a unit under fails the program's collateral floor.
+ */
+export function grossUpForRequired(required: bigint, fee: TransferFee): bigint {
+  if (required === 0n) return 0n;
+  const bps = BigInt(fee.transferFeeBasisPoints);
+  if (bps === 0n) return required;
+  if (bps >= ONE_IN_BASIS_POINTS) {
+    throw new RangeError('transfer fee of 100% leaves nothing to escrow');
+  }
+
+  // Ceiling division, then correct upward until the post-fee amount actually clears.
+  let sent =
+    (required * ONE_IN_BASIS_POINTS + (ONE_IN_BASIS_POINTS - bps) - 1n) /
+    (ONE_IN_BASIS_POINTS - bps);
+  // The cap makes the fee sublinear, so a handful of steps is always enough.
+  for (let i = 0; i < 4 && amountReceived(sent, fee) < required; i++) sent += 1n;
+  return sent;
+}

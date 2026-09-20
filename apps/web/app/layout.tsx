@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 const NAV = [
   { href: '/', label: 'Discover' },
   { href: '/asset/OPENAI', label: 'Commit' },
+  { href: '/protect/OPENAI', label: 'Protect' },
   { href: '/positions', label: 'My Positions' },
 ];
 

@@ -7,6 +7,7 @@ import { fetchPositions, CLUSTER, type Position } from '../lib/chain';
 import { derivePositionAuthority } from '../lib/program';
 import { PublicKey } from '@solana/web3.js';
 import { daysUntil, explorer, fromQuote, shortKey, usd, valuation } from '../lib/format';
+import { PositionActions } from './PositionActions';
 
 /**
  * A wallet's positions, on both sides of the trade.
@@ -183,6 +184,8 @@ export function PositionList() {
                 {!isMaker ? `maker ${shortKey(p.maker)}` : ''}
               </span>
             </div>
+
+            <PositionActions position={p} onDone={load} />
           </article>
         );
       })}

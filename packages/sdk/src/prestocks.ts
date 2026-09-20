@@ -45,8 +45,13 @@ export type MintState = {
   tokenProgram: string;
   /** Already resolved for the current time — never the stale `multiplier` field. */
   multiplier: number;
-  /** Already resolved for the current epoch. */
+  /** Already resolved for the current epoch. Use this to DISPLAY the live fee. */
   transferFee: TransferFee;
+  /**
+   * Both slots of the schedule. Use `worstCaseTransferFee` on this to SIZE a transfer: a
+   * quote built now may be signed after an epoch rollover, when the other slot is live.
+   */
+  transferFeeConfig: TransferFeeConfig;
   /** Issuer capabilities that qualify any collateralization claim. */
   permanentDelegate: string | null;
   freezeAuthority: string | null;
@@ -106,15 +111,14 @@ export async function fetchMintState(mint: string, rpc: RpcCall): Promise<MintSt
     transferFeeBasisPoints: Number(f.transferFeeBasisPoints),
     maximumFee: BigInt(f.maximumFee),
   });
-  const transferFee: TransferFee = feeCfg
-    ? activeTransferFee(
-        {
-          olderTransferFee: toFee(feeCfg.olderTransferFee),
-          newerTransferFee: toFee(feeCfg.newerTransferFee),
-        } satisfies TransferFeeConfig,
-        BigInt(epochInfo.epoch),
-      )
-    : { epoch: 0n, transferFeeBasisPoints: 0, maximumFee: 0n };
+  const noFee: TransferFee = { epoch: 0n, transferFeeBasisPoints: 0, maximumFee: 0n };
+  const transferFeeConfig: TransferFeeConfig = feeCfg
+    ? {
+        olderTransferFee: toFee(feeCfg.olderTransferFee),
+        newerTransferFee: toFee(feeCfg.newerTransferFee),
+      }
+    : { olderTransferFee: noFee, newerTransferFee: noFee };
+  const transferFee = activeTransferFee(transferFeeConfig, BigInt(epochInfo.epoch));
 
   return {
     mint,
@@ -122,6 +126,7 @@ export async function fetchMintState(mint: string, rpc: RpcCall): Promise<MintSt
     tokenProgram: account.value.owner,
     multiplier,
     transferFee,
+    transferFeeConfig,
     permanentDelegate: ext(exts, 'permanentDelegate')?.delegate ?? null,
     freezeAuthority: info.freezeAuthority ?? null,
     paused: Boolean(ext(exts, 'pausableConfig')?.paused),

@@ -171,13 +171,149 @@ export function explainError(err: unknown): string {
     InsufficientCollateral: 'Your USDC transfer did not cover the strike. Try re-quoting.',
     InvalidQuoteMint: 'That is not the settlement currency this protocol uses.',
     InvalidMarket: 'This PreStock is not allowlisted for new commitments.',
+    MarketAcceptDisabled: 'This market is no longer accepting new matches.',
+    InvalidState: 'This position has already been taken, settled or cancelled.',
+    Unauthorized: 'Only the protection holder can exercise this position.',
+    PositionExpired: 'This position has passed its expiry and can no longer be exercised.',
+    PositionNotExpired: 'This position has not reached its expiry yet.',
+    InvalidStockMint: 'The PreStock mint does not match this position.',
   };
   for (const [key, message] of Object.entries(named)) {
     if (text.includes(key)) return message;
   }
   if (/insufficient (lamports|funds)/i.test(text)) {
-    return 'Not enough SOL or USDC in your wallet to cover this commitment.';
+    return 'Not enough SOL, USDC or PreStock in your wallet to cover this.';
+  }
+  if (/could not find account|AccountNotInitialized/i.test(text)) {
+    return 'A required token account does not exist yet in your wallet.';
   }
   if (/User rejected|rejected the request/i.test(text)) return 'You cancelled the transaction.';
   return text.split('\n')[0].slice(0, 200);
+}
+
+/* ------------------------------------------------------------------ taker side */
+
+export type AcceptArgs = {
+  taker: PublicKey;
+  position: PublicKey;
+  maker: PublicKey;
+  accounts: ProtocolAccounts;
+  /** What LEAVES the taker's account — grossed up so the vault clears the floor. */
+  stockRawToSend: bigint;
+};
+
+/**
+ * Take the other side: lock stock, pay the premium, start the protection term.
+ *
+ * `stockRawToSend` must be sized with `grossUpForRequired` against
+ * `worstCaseTransferFee`, not against the live fee. The program checks what the vault
+ * actually RECEIVED against the maker's floor, and sizing for the currently-active slot
+ * fails the moment the mint's fee schedule steps at an epoch boundary.
+ */
+export async function buildAcceptCommitment(program: Program, args: AcceptArgs) {
+  const authority = derivePositionAuthority(args.position);
+  const { quoteMint, quoteTokenProgram, stockMint, stockTokenProgram } = args.accounts;
+
+  return program.methods
+    .acceptCommitment(new BN(args.stockRawToSend.toString()))
+    .accounts({
+      taker: args.taker,
+      config: deriveConfig(),
+      market: deriveMarket(stockMint),
+      position: args.position,
+      positionAuthority: authority,
+      stockMint,
+      quoteMint,
+      takerStockAccount: getAssociatedTokenAddressSync(stockMint, args.taker, false, stockTokenProgram),
+      takerQuoteAccount: getAssociatedTokenAddressSync(quoteMint, args.taker, false, quoteTokenProgram),
+      makerQuoteAccount: getAssociatedTokenAddressSync(quoteMint, args.maker, false, quoteTokenProgram),
+      stockVault: getAssociatedTokenAddressSync(stockMint, authority, true, stockTokenProgram),
+      stockTokenProgram,
+      quoteTokenProgram,
+    })
+    .instruction();
+}
+
+/** Exercise: swap the escrowed stock for the escrowed USDC. Taker only, before expiry. */
+export async function buildExercisePosition(
+  program: Program,
+  args: { taker: PublicKey; position: PublicKey; maker: PublicKey; accounts: ProtocolAccounts },
+) {
+  const authority = derivePositionAuthority(args.position);
+  const { quoteMint, quoteTokenProgram, stockMint, stockTokenProgram } = args.accounts;
+
+  return program.methods
+    .exercisePosition()
+    .accounts({
+      taker: args.taker,
+      position: args.position,
+      positionAuthority: authority,
+      maker: args.maker,
+      stockMint,
+      quoteMint,
+      quoteVault: getAssociatedTokenAddressSync(quoteMint, authority, true, quoteTokenProgram),
+      stockVault: getAssociatedTokenAddressSync(stockMint, authority, true, stockTokenProgram),
+      takerQuoteAccount: getAssociatedTokenAddressSync(quoteMint, args.taker, false, quoteTokenProgram),
+      makerStockAccount: getAssociatedTokenAddressSync(stockMint, args.maker, false, stockTokenProgram),
+      stockTokenProgram,
+      quoteTokenProgram,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
+    })
+    .instruction();
+}
+
+/** Withdraw an unmatched commitment. Maker only, Open only. */
+export async function buildCancelCommitment(
+  program: Program,
+  args: { maker: PublicKey; position: PublicKey; accounts: ProtocolAccounts },
+) {
+  const authority = derivePositionAuthority(args.position);
+  const { quoteMint, quoteTokenProgram } = args.accounts;
+
+  return program.methods
+    .cancelCommitment()
+    .accounts({
+      maker: args.maker,
+      position: args.position,
+      positionAuthority: authority,
+      quoteMint,
+      quoteVault: getAssociatedTokenAddressSync(quoteMint, authority, true, quoteTokenProgram),
+      makerQuoteAccount: getAssociatedTokenAddressSync(quoteMint, args.maker, false, quoteTokenProgram),
+      quoteTokenProgram,
+    })
+    .instruction();
+}
+
+/**
+ * Return both collaterals after expiry. Permissionless, so anyone can crank it —
+ * recovering your own collateral must not depend on a counterparty staying reachable.
+ */
+export async function buildExpirePosition(
+  program: Program,
+  args: { cranker: PublicKey; position: PublicKey; maker: PublicKey; taker: PublicKey; accounts: ProtocolAccounts },
+) {
+  const authority = derivePositionAuthority(args.position);
+  const { quoteMint, quoteTokenProgram, stockMint, stockTokenProgram } = args.accounts;
+
+  return program.methods
+    .expirePosition()
+    .accounts({
+      cranker: args.cranker,
+      position: args.position,
+      maker: args.maker,
+      taker: args.taker,
+      positionAuthority: authority,
+      stockMint,
+      quoteMint,
+      quoteVault: getAssociatedTokenAddressSync(quoteMint, authority, true, quoteTokenProgram),
+      stockVault: getAssociatedTokenAddressSync(stockMint, authority, true, stockTokenProgram),
+      makerQuoteAccount: getAssociatedTokenAddressSync(quoteMint, args.maker, false, quoteTokenProgram),
+      takerStockAccount: getAssociatedTokenAddressSync(stockMint, args.taker, false, stockTokenProgram),
+      stockTokenProgram,
+      quoteTokenProgram,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
+    })
+    .instruction();
 }
