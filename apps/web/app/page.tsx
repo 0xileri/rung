@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { pct, valuation } from '../lib/format';
-import { relativeTo } from '../../../packages/sdk/src/valuation.ts';
+import { relativeTo, isFeedConsistent } from '../../../packages/sdk/src/valuation.ts';
+import { getPreStocks } from '../lib/prestocks-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,19 +14,20 @@ type Asset = {
   feedConsistent: boolean;
 };
 
-async function getAssets(): Promise<Asset[]> {
-  const base = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://127.0.0.1:3000';
+// Calls the cache directly rather than fetching this app's own API route over HTTP: a
+// server component self-fetching needs a correct base URL in every environment, and it
+// doubles the work for data already in memory.
+async function getAssets(): Promise<{ assets: Asset[]; stale: boolean }> {
   try {
-    const res = await fetch(`${base}/api/prestocks`, { cache: 'no-store' });
-    if (!res.ok) return [];
-    return ((await res.json()) as { assets: Asset[] }).assets ?? [];
+    const { assets, stale } = await getPreStocks();
+    return { assets: assets.map((a) => ({ ...a, feedConsistent: isFeedConsistent(a) })) as Asset[], stale };
   } catch {
-    return [];
+    return { assets: [], stale: false };
   }
 }
 
 export default async function Home() {
-  const assets = await getAssets();
+  const { assets, stale } = await getAssets();
   const featured = assets.find((a) => a.symbol === 'OPENAI') ?? assets[0];
 
   return (
@@ -81,6 +83,11 @@ export default async function Home() {
       <section>
         <h2 className="label" style={{ marginBottom: 16 }}>
           PreStocks markets
+          {stale && (
+            <span style={{ marginLeft: 10, color: 'var(--caution)', textTransform: 'none', letterSpacing: 0 }}>
+              cached &mdash; upstream busy
+            </span>
+          )}
         </h2>
 
         {assets.length === 0 ? (

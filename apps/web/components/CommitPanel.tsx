@@ -210,7 +210,7 @@ export function CommitPanel({
             target="_blank"
             rel="noreferrer"
           >
-            Transaction {shortKey(phase.signature, 6, 6)} &nearr;
+            Transaction {shortKey(phase.signature, 6, 6)} &#8599;
           </a>
           <a
             className="fig"
@@ -219,7 +219,7 @@ export function CommitPanel({
             target="_blank"
             rel="noreferrer"
           >
-            Position {shortKey(phase.position, 6, 6)} &nearr;
+            Position {shortKey(phase.position, 6, 6)} &#8599;
           </a>
         </div>
         <button

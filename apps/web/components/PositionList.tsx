@@ -169,14 +169,14 @@ export function PositionList() {
 
             <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 12 }}>
               <a href={explorer('address', p.pubkey, CLUSTER)} target="_blank" rel="noreferrer">
-                Position account &nearr;
+                Position account &#8599;
               </a>
               <a
                 href={explorer('address', authority.toBase58(), CLUSTER)}
                 target="_blank"
                 rel="noreferrer"
               >
-                Vault authority &nearr;
+                Vault authority &#8599;
               </a>
               <span className="fig" style={{ color: 'var(--text-faint)' }}>
                 {isMaker && p.taker ? `taker ${shortKey(p.taker)}` : ''}

@@ -6,6 +6,9 @@ import { fetchPositions, toOpenCommitments, CLUSTER } from '../../../lib/chain';
 import { buildCurve } from '../../../../../packages/sdk/src/commitment-curve.ts';
 import { valuationBands, relativeTo } from '../../../../../packages/sdk/src/valuation.ts';
 import { band, daysUntil, explorer, pct, shortKey, usd, fromQuote, valuation } from '../../../lib/format';
+import { getPreStocks, findAsset, getMintState } from '../../../lib/prestocks-cache';
+import { custodyCaveats } from '../../../../../packages/sdk/src/prestocks.ts';
+import { isFeedConsistent } from '../../../../../packages/sdk/src/valuation.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,18 +25,29 @@ type AssetResponse = {
   mint: {
     decimals: number;
     multiplier: number;
-    transferFee: { transferFeeBasisPoints: number; epoch: string; maximumFee: string };
+    transferFee: { transferFeeBasisPoints: number };
   };
   caveats: string[];
   feedConsistent: boolean;
 };
 
+// Reads the shared cache directly. A server component fetching its own API route needs a
+// correct base URL in every environment and doubles work already done in memory.
 async function getAsset(symbol: string): Promise<AssetResponse | null> {
-  const base = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://127.0.0.1:3000';
-  const res = await fetch(`${base}/api/prestocks?symbol=${encodeURIComponent(symbol)}`, {
-    cache: 'no-store',
-  });
-  return res.ok ? ((await res.json()) as AssetResponse) : null;
+  try {
+    const { assets } = await getPreStocks();
+    const asset = findAsset(assets, symbol);
+    if (!asset) return null;
+    const mint = await getMintState(asset.contract_address);
+    return {
+      asset,
+      mint,
+      caveats: custodyCaveats(mint),
+      feedConsistent: isFeedConsistent(asset),
+    } as AssetResponse;
+  } catch {
+    return null;
+  }
 }
 
 export default async function AssetPage({ params }: { params: Promise<{ symbol: string }> }) {
@@ -241,7 +255,7 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
             target="_blank"
             rel="noreferrer"
           >
-            Mint {shortKey(asset.contract_address, 6, 6)} &nearr;
+            Mint {shortKey(asset.contract_address, 6, 6)} &#8599;
           </a>
         </div>
       </div>
