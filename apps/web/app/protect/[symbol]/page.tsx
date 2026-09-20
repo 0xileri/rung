@@ -51,6 +51,7 @@ export default async function ProtectPage({ params }: { params: Promise<{ symbol
           background: 'var(--surface)',
           border: '1px solid var(--line)',
           borderRadius: 'var(--radius)',
+          boxShadow: 'var(--shadow-soft)',
           marginBottom: 24,
         }}
       >

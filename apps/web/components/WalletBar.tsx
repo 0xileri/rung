@@ -69,20 +69,10 @@ export function WalletBar() {
   return (
     <button
       type="button"
+      className="btn"
       onClick={() => setVisible(true)}
       disabled={connecting}
-      style={{
-        fontFamily: 'var(--font-sans)',
-        fontSize: 13,
-        fontWeight: 500,
-        color: 'var(--ink)',
-        background: 'var(--amber-fill)',
-        border: 'none',
-        borderRadius: 7,
-        padding: '8px 14px',
-        minHeight: 34,
-        cursor: connecting ? 'wait' : 'pointer',
-      }}
+      style={{ minHeight: 34, padding: '8px 14px', fontSize: 13 }}
     >
       {connecting ? 'Connecting…' : 'Connect wallet'}
     </button>

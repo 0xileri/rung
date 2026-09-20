@@ -185,18 +185,18 @@ export function CommitPanel({
   const row = (label: string, value: string, accent?: string) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 13 }}>
       <span style={{ color: 'var(--text-muted)' }}>{label}</span>
-      <span className="fig" style={{ color: accent ?? 'var(--paper)' }}>
+      <span className="fig" style={{ color: accent ?? 'var(--text)' }}>
         {value}
       </span>
     </div>
   );
 
-  const darkField = { background: '#1A1F27', borderColor: 'var(--line)', color: 'var(--paper)' };
+  const fieldStyle = { background: 'var(--surface)', borderColor: 'var(--line)', color: 'var(--text)' };
 
   if (phase.kind === 'done') {
     return (
       <section
-        style={{ background: 'var(--ink)', borderRadius: 'var(--radius-lg)', padding: '24px 26px' }}
+        className="panel" style={{ padding: '24px 26px' }}
       >
         <h2 className="label" style={{ color: 'var(--amber-fill)', marginBottom: 12 }}>
           Commitment open
@@ -228,7 +228,7 @@ export function CommitPanel({
         <button
           type="button"
           className="btn btn-quiet"
-          style={{ width: '100%', color: 'var(--paper)', borderColor: '#2A2F38' }}
+          style={{ width: '100%', color: 'var(--text)', borderColor: 'var(--line)' }}
           onClick={() => {
             setPhase({ kind: 'idle' });
             setUnderstood(false);
@@ -248,9 +248,9 @@ export function CommitPanel({
 
   return (
     <section
-      style={{ background: 'var(--ink)', borderRadius: 'var(--radius-lg)', padding: '24px 26px' }}
+      className="panel" style={{ padding: '24px 26px' }}
     >
-      <h2 className="label" style={{ color: '#8B9099', marginBottom: 18 }}>
+      <h2 className="label" style={{ color: 'var(--text-faint)', marginBottom: 18 }}>
         Commit at a valuation
       </h2>
 
@@ -259,7 +259,7 @@ export function CommitPanel({
           <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
             I would own around
           </span>
-          <select value={target} onChange={(e) => setTarget(Number(e.target.value))} style={darkField}>
+          <select value={target} onChange={(e) => setTarget(Number(e.target.value))} style={fieldStyle}>
             {bands.map((b) => (
               <option key={b} value={b}>
                 {band(b)} ({pct((b - impliedValuation) / impliedValuation, 1)} vs market)
@@ -279,7 +279,7 @@ export function CommitPanel({
               step={1}
               value={size}
               onChange={(e) => setSize(Math.max(0, Number(e.target.value)))}
-              style={darkField}
+              style={fieldStyle}
             />
           </label>
           <label style={{ flexGrow: 1 }}>
@@ -292,7 +292,7 @@ export function CommitPanel({
               step={0.1}
               value={premium}
               onChange={(e) => setPremium(Math.max(0, Number(e.target.value)))}
-              style={darkField}
+              style={fieldStyle}
             />
           </label>
         </div>
@@ -333,10 +333,10 @@ export function CommitPanel({
             flexDirection: 'column',
             gap: 9,
             paddingTop: 18,
-            borderTop: '1px solid #262A32',
+            borderTop: '1px solid var(--line-soft)',
           }}
         >
-          <div className="label" style={{ color: '#8B9099', marginBottom: 3 }}>
+          <div className="label" style={{ color: 'var(--text-faint)', marginBottom: 3 }}>
             Reality check
           </div>
           {row('Target valuation', valuation(target))}
@@ -352,7 +352,7 @@ export function CommitPanel({
         </div>
       )}
 
-      <p style={{ fontSize: 11, lineHeight: 1.5, color: '#8B9099', margin: '16px 0 14px' }}>
+      <p style={{ fontSize: 11, lineHeight: 1.5, color: 'var(--text-faint)', margin: '16px 0 14px' }}>
         The strike is fixed at creation. If {symbol}&rsquo;s valuation changes afterwards, this
         agreement does not change with it. The round-trip transfer fee is charged by the mint,
         not by Rung, and is not refunded.
@@ -386,8 +386,8 @@ export function CommitPanel({
           style={{
             fontSize: 12,
             lineHeight: 1.5,
-            color: '#E8927C',
-            background: 'rgba(176,68,46,0.14)',
+            color: 'var(--danger)',
+            background: 'var(--danger-wash)',
             borderRadius: 'var(--radius-sm)',
             padding: '10px 12px',
             margin: '0 0 12px',
@@ -420,7 +420,7 @@ export function CommitPanel({
       )}
 
       {failure && (
-        <p style={{ fontSize: 11, color: '#E8927C', margin: '10px 0 0', lineHeight: 1.5 }}>
+        <p style={{ fontSize: 11, color: 'var(--danger)', margin: '10px 0 0', lineHeight: 1.5 }}>
           {failure.detail} The quote above is still live and correct; only signing is
           unavailable.
         </p>

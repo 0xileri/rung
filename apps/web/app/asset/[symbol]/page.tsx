@@ -129,14 +129,8 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
 
       {!feedConsistent && (
         <p
-          className="card"
-          style={{
-            padding: '12px 16px',
-            marginBottom: 20,
-            fontSize: 13,
-            color: 'var(--caution)',
-            borderColor: 'var(--caution)',
-          }}
+          className="callout callout-caution"
+          style={{ marginBottom: 20 }}
         >
           The mark and implied valuations disagree on this asset&rsquo;s share count, so the
           proportional valuation mapping does not currently hold. Commitment creation is
@@ -146,15 +140,8 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
 
       {escrow.mock && (
         <p
-          className="card"
-          style={{
-            padding: '12px 16px',
-            marginBottom: 20,
-            fontSize: 13,
-            lineHeight: 1.55,
-            color: 'var(--text-muted)',
-            borderColor: 'var(--amber-fill)',
-          }}
+          className="callout"
+          style={{ marginBottom: 20 }}
         >
           <strong>Devnet demo.</strong> PreStocks exist only on mainnet, so the token escrowed
           here is a mock that reproduces the real mint&rsquo;s {escrow.feeBps ? escrow.feeBps / 100 : 0}%
