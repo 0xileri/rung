@@ -184,14 +184,14 @@ export function CommitPanel({
 
   const row = (label: string, value: string, accent?: string) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 13 }}>
-      <span style={{ color: '#A8ABB2' }}>{label}</span>
+      <span style={{ color: 'var(--text-muted)' }}>{label}</span>
       <span className="fig" style={{ color: accent ?? 'var(--paper)' }}>
         {value}
       </span>
     </div>
   );
 
-  const darkField = { background: '#1A1F27', borderColor: '#262A32', color: 'var(--paper)' };
+  const darkField = { background: '#1A1F27', borderColor: 'var(--line)', color: 'var(--paper)' };
 
   if (phase.kind === 'done') {
     return (
@@ -201,7 +201,7 @@ export function CommitPanel({
         <h2 className="label" style={{ color: 'var(--amber-fill)', marginBottom: 12 }}>
           Commitment open
         </h2>
-        <p style={{ fontSize: 14, lineHeight: 1.55, color: '#A8ABB2', margin: '0 0 16px' }}>
+        <p style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--text-muted)', margin: '0 0 16px' }}>
           {usd(size)} USDC is escrowed in a program-controlled vault at {band(target)}. You
           receive the {usd(premium)} premium the moment a holder takes the other side.
         </p>
@@ -256,7 +256,7 @@ export function CommitPanel({
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
         <label style={{ display: 'block' }}>
-          <span style={{ display: 'block', fontSize: 12, color: '#A8ABB2', marginBottom: 6 }}>
+          <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
             I would own around
           </span>
           <select value={target} onChange={(e) => setTarget(Number(e.target.value))} style={darkField}>
@@ -270,7 +270,7 @@ export function CommitPanel({
 
         <div style={{ display: 'flex', gap: 12 }}>
           <label style={{ flexGrow: 1 }}>
-            <span style={{ display: 'block', fontSize: 12, color: '#A8ABB2', marginBottom: 6 }}>
+            <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
               Position size (USDC)
             </span>
             <input
@@ -283,7 +283,7 @@ export function CommitPanel({
             />
           </label>
           <label style={{ flexGrow: 1 }}>
-            <span style={{ display: 'block', fontSize: 12, color: '#A8ABB2', marginBottom: 6 }}>
+            <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
               Premium asked
             </span>
             <input
@@ -298,7 +298,7 @@ export function CommitPanel({
         </div>
 
         <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
-          <legend style={{ fontSize: 12, color: '#A8ABB2', marginBottom: 6, padding: 0 }}>
+          <legend style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6, padding: 0 }}>
             Expiry
           </legend>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -314,9 +314,9 @@ export function CommitPanel({
                   fontSize: 13,
                   cursor: 'pointer',
                   borderRadius: 'var(--radius-sm)',
-                  border: `1px solid ${expiryDays === e.days ? 'var(--amber-fill)' : '#262A32'}`,
+                  border: `1px solid ${expiryDays === e.days ? 'var(--amber-fill)' : 'var(--line)'}`,
                   background: expiryDays === e.days ? 'rgba(201,138,60,0.14)' : 'transparent',
-                  color: expiryDays === e.days ? 'var(--amber-fill)' : '#A8ABB2',
+                  color: expiryDays === e.days ? 'var(--amber-fill)' : 'var(--text-muted)',
                 }}
               >
                 {e.label}
@@ -344,7 +344,7 @@ export function CommitPanel({
           {row('vs mark', pct(quote.discountToMark))}
           {row('Fixed strike', `$${quote.targetTokenPrice.toFixed(4)}`)}
           {row('PreStock if exercised', quote.uiQuantity.toFixed(8))}
-          <div style={{ height: 1, background: '#262A32', margin: '3px 0' }} />
+          <div style={{ height: 1, background: 'var(--line)', margin: '3px 0' }} />
           {row('USDC locked', usd(size))}
           {row('Premium received', usd(premium), 'var(--amber-fill)')}
           {row('Premium / collateral', pct(premiumPct), 'var(--amber-fill)')}
@@ -364,7 +364,7 @@ export function CommitPanel({
           alignItems: 'flex-start',
           gap: 9,
           fontSize: 12,
-          color: '#A8ABB2',
+          color: 'var(--text-muted)',
           marginBottom: 14,
           cursor: 'pointer',
         }}

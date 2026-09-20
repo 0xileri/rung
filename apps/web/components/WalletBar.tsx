@@ -52,9 +52,9 @@ export function WalletBar() {
         title="Click to disconnect"
         style={{
           fontSize: 12,
-          color: '#A8ABB2',
+          color: 'var(--text-muted)',
           background: 'transparent',
-          border: '1px solid #2A2F38',
+          border: '1px solid var(--line)',
           borderRadius: 7,
           padding: '7px 11px',
           minHeight: 34,

@@ -29,7 +29,7 @@ export default async function ProtectPage({ params }: { params: Promise<{ symbol
   const name = asset.name.replace(' PreStocks', '');
 
   return (
-    <div className="wrap" style={{ paddingTop: 36, paddingBottom: 48, maxWidth: 900 }}>
+    <div className="wrap enter" style={{ paddingTop: 36, paddingBottom: 48, maxWidth: 900 }}>
       <div style={{ marginBottom: 28 }}>
         <div className="label" style={{ marginBottom: 7 }}>
           Protect {asset.symbol}

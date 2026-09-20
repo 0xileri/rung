@@ -47,7 +47,7 @@ export function CommitmentCurve({
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-        {buckets.map((b) => {
+        {buckets.map((b, i) => {
           const amount = fromQuote(b.committed);
           const width = anyCapital ? (Number(b.committed) / Number(peak)) * 100 : 0;
           // Only the top two bands by capital get the accent; a curve where every bar is
@@ -82,12 +82,14 @@ export function CommitmentCurve({
                 }}
               >
                 <div
+                  className="curve-bar"
                   style={{
                     width: `${width}%`,
                     height: '100%',
                     background: isPeak ? 'var(--amber-fill)' : 'var(--amber-soft)',
                     borderRadius: 5,
-                    transition: 'width 240ms ease-out',
+                    transition: 'width 320ms var(--ease-out)',
+                    animationDelay: `${Math.min(i, 12) * 45}ms`,
                   }}
                 />
               </div>

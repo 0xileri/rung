@@ -1,34 +1,46 @@
 /*
- * Rung design tokens.
+ * Rung design tokens — dark editorial fintech (default).
  *
- * Two accents rather than red/green, because nothing here is up or down: amber is
- * committed capital, teal is downside protection — the two people a position joins.
- *
- * Each accent carries a -fill and an -ink value. Amber on paper is only 2.8:1, which fails
- * body text and large text alike, so anything anyone has to READ uses the -ink value and
- * shapes use -fill. Getting this wrong is the single easiest way to ship an inaccessible
- * screen here.
+ * Amber = committed capital. Teal = downside protection.
+ * -fill for shapes / primary actions; -ink for readable text.
  */
+
 :root {
-  --ink: #0E1116;
-  --paper: #F7F6F3;
-  --surface: #FFFFFF;
-  --line: #E2DFD8;
-  --line-soft: #EFEDE8;
+  /* Surfaces (dark product chrome) */
+  --ink: #07090c;
+  --paper: #0b0e13;
+  --surface: #12171f;
+  --surface-elevated: #181e28;
+  --line: #262c36;
+  --line-soft: #1c222c;
+  --line-strong: #343b48;
 
-  --text: #0E1116;
-  --text-muted: #414751;
-  --text-faint: #5A6069;
+  /* Light glyph on dark chrome (marks, reversed wordmark) */
+  --chalk: #f3f1ec;
 
-  --amber-fill: #C98A3C;   /* bars, fills, primary action */
-  --amber-ink: #8F5F1E;    /* 6.0:1 on paper — use for text */
-  --amber-wash: #FFF8EC;
-  --amber-soft: #D9CDB8;   /* non-peak bars */
+  /* Text */
+  --text: #f3f1ec;
+  --text-muted: #a7abb4;
+  --text-faint: #7e848f;
 
-  --teal-fill: #4A7C7E;
-  --teal-ink: #35605F;     /* 6.0:1 on paper — use for text */
+  /* Amber — committed capital */
+  --amber-fill: #c98a3c;
+  --amber-ink: #d4a05c;
+  --amber-wash: #1a1610;
+  --amber-soft: #6b5230;
+  --amber-glow: rgba(201, 138, 60, 0.22);
+  --amber-glow-ring: rgba(201, 138, 60, 0.18);
 
-  --caution: #B0442E;
+  /* Teal — protection */
+  --teal-fill: #5f9a9b;
+  --teal-ink: #7eb5b6;
+
+  --caution: #d06048;
+
+  /* Elevation / motion */
+  --shadow-soft: 0 10px 40px rgba(0, 0, 0, 0.35);
+  --shadow-lift: 0 16px 48px rgba(0, 0, 0, 0.45);
+  --glow-amber: 0 0 48px rgba(201, 138, 60, 0.12);
 
   --font-display: 'Instrument Serif', Georgia, 'Times New Roman', serif;
   --font-sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
@@ -36,49 +48,45 @@
 
   --radius-sm: 8px;
   --radius: 14px;
-  --radius-lg: 16px;
+  --radius-lg: 18px;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-soft: cubic-bezier(0.33, 1, 0.68, 1);
+  --dur-fast: 180ms;
+  --dur: 280ms;
+  --dur-slow: 420ms;
+
+  --header-h: 64px;
 }
 
-/*
- * On ink the accents do not simply invert. Amber clears 6:1 unchanged, but teal has to
- * lighten or it disappears into the ground.
- */
-:root:not([data-theme="light"]) {
-  @media (prefers-color-scheme: dark) {
-    --paper: #0E1116;
-    --surface: #1A1F27;
-    --line: #262A32;
-    --line-soft: #1F242B;
-    --text: #F7F6F3;
-    --text-muted: #A8ABB2;
-    --text-faint: #8B9099;
-    --amber-ink: #C98A3C;
-    --teal-fill: #79ACAD;
-    --teal-ink: #79ACAD;
-    --amber-wash: #1F1A12;
-  }
+:root[data-theme='light'] {
+  --ink: #0e1116;
+  --paper: #f7f6f3;
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --line: #e2dfd8;
+  --line-soft: #efede8;
+  --line-strong: #d4d0c6;
+  --chalk: #f7f6f3;
+  --text: #0e1116;
+  --text-muted: #414751;
+  --text-faint: #5a6069;
+  --amber-fill: #c98a3c;
+  --amber-ink: #8f5f1e;
+  --amber-wash: #fff8ec;
+  --amber-soft: #d9cdb8;
+  --amber-glow: rgba(201, 138, 60, 0.15);
+  --teal-fill: #4a7c7e;
+  --teal-ink: #35605f;
+  --caution: #b0442e;
+  --shadow-soft: 0 10px 40px rgba(14, 17, 22, 0.08);
+  --shadow-lift: 0 16px 48px rgba(14, 17, 22, 0.12);
+  --glow-amber: 0 0 40px rgba(201, 138, 60, 0.1);
 }
 
-:root[data-theme="dark"] {
-  --paper: #0E1116;
-  --surface: #1A1F27;
-  --line: #262A32;
-  --line-soft: #1F242B;
-  --text: #F7F6F3;
-  --text-muted: #A8ABB2;
-  --text-faint: #8B9099;
-  --amber-ink: #C98A3C;
-  --teal-fill: #79ACAD;
-  --teal-ink: #79ACAD;
-  --amber-wash: #1F1A12;
-}
-
-/*
- * Every figure in the product is monospaced. A raw PreStock quantity carries nine decimals
- * and a strike four; at that precision, columns that do not align are genuinely harder to
- * compare, and a changing price should not reflow the row beside it.
- */
-.figure {
+.figure,
+.fig {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
 }
