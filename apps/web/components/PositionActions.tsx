@@ -53,11 +53,12 @@ export function PositionActions({ position, onDone }: { position: Position; onDo
       try {
         setPhase({ kind: 'working', note: 'Building transaction' });
         const program = getProgram(connection, wallet as never);
-        const accounts = await loadProtocolAccounts(program, new PublicKey(position.stockMint));
-        if (!accounts) {
-          setPhase({ kind: 'error', message: 'The program is not reachable on this cluster.' });
+        const loaded = await loadProtocolAccounts(program, new PublicKey(position.stockMint));
+        if (!loaded.ok) {
+          setPhase({ kind: 'error', message: loaded.detail });
           return;
         }
+        const accounts = loaded.accounts;
 
         const pos = new PublicKey(position.pubkey);
         const ix =

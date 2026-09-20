@@ -15,7 +15,7 @@ import {
   explainError,
   getProgram,
   loadProtocolAccounts,
-  type ProtocolAccounts,
+  type ProtocolLoadResult,
 } from '../lib/program';
 import { fetchPositions, toOpenCommitments, CLUSTER, type Position } from '../lib/chain';
 import { band, daysUntil, explorer, fromQuote, shortKey, usd } from '../lib/format';
@@ -55,7 +55,7 @@ export function ProtectMarket({
   const [positions, setPositions] = useState<Position[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
-  const [protocol, setProtocol] = useState<ProtocolAccounts | null | 'loading'>('loading');
+  const [protocol, setProtocol] = useState<ProtocolLoadResult | 'loading'>('loading');
 
   const worstFee: TransferFee = useMemo(
     () =>
@@ -84,8 +84,8 @@ export function ProtectMarket({
     if (!wallet.publicKey) return;
     (async () => {
       const program = getProgram(connection, wallet as never);
-      const accounts = await loadProtocolAccounts(program, new PublicKey(stockMint));
-      if (live) setProtocol(accounts);
+      const result = await loadProtocolAccounts(program, new PublicKey(stockMint));
+      if (live) setProtocol(result);
     })();
     return () => {
       live = false;
@@ -95,8 +95,12 @@ export function ProtectMarket({
   const accept = useCallback(
     async (p: Position) => {
       if (!wallet.publicKey || !wallet.signTransaction) return;
-      if (!protocol || protocol === 'loading') {
-        setPhase({ kind: 'error', message: 'The program is not deployed on this cluster yet.' });
+      if (protocol === 'loading') {
+        setPhase({ kind: 'error', message: 'Still checking the market on chain — try again in a moment.' });
+        return;
+      }
+      if (!protocol.ok) {
+        setPhase({ kind: 'error', message: protocol.detail });
         return;
       }
       try {
@@ -107,7 +111,7 @@ export function ProtectMarket({
           taker: wallet.publicKey,
           position: new PublicKey(p.pubkey),
           maker: new PublicKey(p.maker),
-          accounts: protocol,
+          accounts: protocol.accounts,
           stockRawToSend: toSend,
         });
 

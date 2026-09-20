@@ -11,6 +11,7 @@ import {
   getProgram,
   loadProtocolAccounts,
   type ProtocolAccounts,
+  type ProtocolLoadResult,
 } from '../lib/program';
 import { CLUSTER } from '../lib/chain';
 import { band, explorer, pct, shortKey, usd, valuation } from '../lib/format';
@@ -76,7 +77,7 @@ export function CommitPanel({
   const [premium, setPremium] = useState(4.6);
   const [understood, setUnderstood] = useState(false);
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
-  const [protocol, setProtocol] = useState<ProtocolAccounts | null | 'loading'>('loading');
+  const [protocol, setProtocol] = useState<ProtocolLoadResult | 'loading'>('loading');
 
   // Read the protocol's own allowlist rather than trusting the page's props: if the program
   // is not deployed here, or this mint was never allowlisted, say so before anyone signs.
@@ -88,8 +89,8 @@ export function CommitPanel({
     }
     (async () => {
       const program = getProgram(connection, wallet as never);
-      const accounts = await loadProtocolAccounts(program, new PublicKey(stockMint));
-      if (live) setProtocol(accounts);
+      const result = await loadProtocolAccounts(program, new PublicKey(stockMint));
+      if (live) setProtocol(result);
     })();
     return () => {
       live = false;
@@ -126,18 +127,20 @@ export function CommitPanel({
 
   const submit = useCallback(async () => {
     if (!quote || !wallet.publicKey || !wallet.signTransaction) return;
-    if (!protocol || protocol === 'loading') {
-      setPhase({
-        kind: 'error',
-        message: 'This PreStock is not allowlisted on the deployed program yet.',
-      });
+    if (protocol === 'loading') {
+      setPhase({ kind: 'error', message: 'Still checking the market on chain — try again in a moment.' });
       return;
     }
-    if (protocol.paused) {
+    if (!protocol.ok) {
+      setPhase({ kind: 'error', message: protocol.detail });
+      return;
+    }
+    const accounts = protocol.accounts;
+    if (accounts.paused) {
       setPhase({ kind: 'error', message: 'The protocol is paused for new commitments.' });
       return;
     }
-    if (!protocol.marketEnabled) {
+    if (!accounts.marketEnabled) {
       setPhase({
         kind: 'error',
         message: 'This market is not accepting new commitments right now.',
@@ -150,7 +153,7 @@ export function CommitPanel({
       const program = getProgram(connection, wallet as never);
       const { instruction, position } = await buildCreateCommitment(program, {
         maker: wallet.publicKey,
-        accounts: protocol,
+        accounts,
         stockRawRequired: quote.rawQuantity,
         strikeQuoteAmount: quote.strikeQuoteAmount,
         premiumQuoteAmount: BigInt(Math.round(premium * 1e6)),
@@ -237,7 +240,11 @@ export function CommitPanel({
     );
   }
 
-  const ready = !disabled && !!quote && understood && size > 0 && !busy;
+  const checking = wallet.connected && protocol === 'loading';
+  // Captured as a value rather than re-narrowed at each use site, so the failure detail is
+  // available without repeating the discriminant checks in JSX.
+  const failure = protocol !== 'loading' && !protocol.ok ? protocol : null;
+  const ready = !disabled && !!quote && understood && size > 0 && !busy && !checking && !failure;
 
   return (
     <section
@@ -402,14 +409,20 @@ export function CommitPanel({
           disabled={!ready}
           onClick={submit}
         >
-          {busy ? `${phase.note}…` : disabled ? 'Unavailable for this asset' : `Lock ${usd(size)} USDC`}
+          {busy
+            ? `${phase.note}…`
+            : checking
+              ? 'Checking the market…'
+              : disabled
+                ? 'Unavailable for this asset'
+                : `Lock ${usd(size)} USDC`}
         </button>
       )}
 
-      {wallet.connected && protocol === null && (
-        <p style={{ fontSize: 11, color: '#8B9099', margin: '10px 0 0', lineHeight: 1.5 }}>
-          The program is not deployed on {CLUSTER}, or this mint is not allowlisted. The quote
-          above is still live and correct; only signing is unavailable.
+      {failure && (
+        <p style={{ fontSize: 11, color: '#E8927C', margin: '10px 0 0', lineHeight: 1.5 }}>
+          {failure.detail} The quote above is still live and correct; only signing is
+          unavailable.
         </p>
       )}
     </section>

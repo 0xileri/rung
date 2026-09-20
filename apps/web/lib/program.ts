@@ -66,6 +66,23 @@ export type ProtocolAccounts = {
 };
 
 /**
+ * Why a market could not be loaded.
+ *
+ * Distinguishing these matters more than it looks. Collapsing them into a single null made
+ * the UI report "this PreStock is not allowlisted" for a transient RPC error, for a program
+ * that was not deployed, and for a load that simply had not finished yet -- three wrong
+ * answers and one right one, all wearing the same words.
+ */
+export type ProtocolLoadResult =
+  | { ok: true; accounts: ProtocolAccounts }
+  | { ok: false; reason: 'no-program' | 'no-config' | 'no-market' | 'rpc'; detail: string };
+
+const notFound = (e: unknown) =>
+  /Account does not exist|could not find|AccountNotFound/i.test(
+    e instanceof Error ? e.message : String(e),
+  );
+
+/**
  * Read the protocol's own view of a market.
  *
  * Also returns the two gate flags so the UI can explain *why* a commitment is unavailable
@@ -74,30 +91,55 @@ export type ProtocolAccounts = {
 export async function loadProtocolAccounts(
   program: Program,
   stockMint: PublicKey,
-): Promise<ProtocolAccounts | null> {
+): Promise<ProtocolLoadResult> {
+  const conn = program.provider.connection;
+
   try {
-    const config = (await (program.account as any).globalConfig.fetch(deriveConfig())) as {
+    const prog = await conn.getAccountInfo(PROGRAM_ID);
+    if (!prog?.executable) {
+      return { ok: false, reason: 'no-program', detail: `Program ${PROGRAM_ID.toBase58()} is not deployed on this cluster.` };
+    }
+  } catch (e) {
+    return { ok: false, reason: 'rpc', detail: e instanceof Error ? e.message : String(e) };
+  }
+
+  let config;
+  try {
+    config = (await (program.account as any).globalConfig.fetch(deriveConfig())) as {
       quoteMint: PublicKey;
       quoteTokenProgram: PublicKey;
       paused: boolean;
     };
-    const market = (await (program.account as any).market.fetch(deriveMarket(stockMint))) as {
+  } catch (e) {
+    return notFound(e)
+      ? { ok: false, reason: 'no-config', detail: 'The protocol config has not been initialized on this cluster.' }
+      : { ok: false, reason: 'rpc', detail: e instanceof Error ? e.message : String(e) };
+  }
+
+  let market;
+  try {
+    market = (await (program.account as any).market.fetch(deriveMarket(stockMint))) as {
       stockMint: PublicKey;
       tokenProgram: PublicKey;
       enabled: boolean;
     };
-    return {
+  } catch (e) {
+    return notFound(e)
+      ? { ok: false, reason: 'no-market', detail: `${stockMint.toBase58()} is not allowlisted on this deployment.` }
+      : { ok: false, reason: 'rpc', detail: e instanceof Error ? e.message : String(e) };
+  }
+
+  return {
+    ok: true,
+    accounts: {
       quoteMint: config.quoteMint,
       quoteTokenProgram: config.quoteTokenProgram,
       stockMint: market.stockMint,
       stockTokenProgram: market.tokenProgram,
       marketEnabled: market.enabled,
       paused: config.paused,
-    };
-  } catch {
-    // Program not deployed on this cluster, or this mint is not allowlisted.
-    return null;
-  }
+    },
+  };
 }
 
 export type CreateCommitmentArgs = {
