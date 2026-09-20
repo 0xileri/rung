@@ -8,7 +8,18 @@
     "apps/*"
   ],
   "scripts": {
-    "test": "node --test \"packages/sdk/test/**/*.test.ts\""
+    "test:sdk": "node --test \"packages/sdk/test/**/*.test.ts\"",
+    "test:program": "anchor test"
   },
-  "type": "module"
+  "devDependencies": {
+    "@coral-xyz/anchor": "^0.31.1",
+    "@solana/spl-token": "^0.4.9",
+    "@solana/web3.js": "^1.95.8",
+    "chai": "^4.5.0",
+    "mocha": "^10.7.3",
+    "ts-mocha": "^10.0.0",
+    "typescript": "^5.6.3",
+    "@types/mocha": "^10.0.9",
+    "@types/chai": "^4.3.20"
+  }
 }
