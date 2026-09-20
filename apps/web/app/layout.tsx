@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import './globals.css';
 import { Mark, Wordmark } from '../components/Mark';
+import { WalletRoot, WalletBar } from '../components/WalletBar';
 
 export const metadata: Metadata = {
   title: 'Limit+ — capital-backed valuations for PreStocks',
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
+        <WalletRoot>
         <header style={{ background: 'var(--ink)' }}>
           <div
             className="wrap"
@@ -48,8 +50,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               ))}
             </nav>
             <span className="fig" style={{ fontSize: 12, color: '#8B9099' }}>
-              devnet
+              {process.env.NEXT_PUBLIC_CLUSTER ?? 'devnet'}
             </span>
+            <WalletBar />
           </div>
         </header>
 
@@ -70,6 +73,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </p>
           </div>
         </footer>
+        </WalletRoot>
       </body>
     </html>
   );

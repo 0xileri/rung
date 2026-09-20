@@ -191,6 +191,7 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
           <CommitPanel
             symbol={asset.symbol}
+            stockMint={asset.contract_address}
             markPrice={asset.markPrice}
             markValuation={asset.markValuation}
             impliedValuation={asset.impliedValuation}
