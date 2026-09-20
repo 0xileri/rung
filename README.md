@@ -118,7 +118,7 @@ so yesterday's numbers are not evidence.
 
 ## Status
 
-**Live:** https://web-production-8b9e2.up.railway.app
+**Live:** https://rung.up.railway.app
 
 - Program: **18/18** tests — full lifecycle, both settlement paths, and every refusal in the
   state machine

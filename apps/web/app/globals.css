@@ -104,3 +104,30 @@ select {
     padding: 0 16px;
   }
 }
+
+/*
+ * Two-column layout for the asset and protect pages.
+ *
+ * This lived as an inline style, which cannot carry a media query, so the fixed 372px
+ * sidebar never collapsed: on a 375px viewport the content column resolved to 0px and the
+ * Commitment Curve rendered at zero width. Below 900px the columns stack instead.
+ */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 372px;
+  gap: 22px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Stat rows and nav wrap rather than forcing the page wider than the screen. */
+@media (max-width: 560px) {
+  .wrap h1 {
+    font-size: clamp(30px, 8vw, 44px);
+  }
+}
