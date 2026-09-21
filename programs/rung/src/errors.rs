@@ -34,4 +34,11 @@ pub enum RungError {
     GlobalPause,
     #[msg("Symbol exceeds the maximum length")]
     SymbolTooLong,
+    // New variants go last: codes are positional, and clients already map the ones above.
+    #[msg("Strike exceeds the per-position cap")]
+    StrikeAboveCap,
+    #[msg("Stock mint has a transfer hook set, which this program cannot yet settle through")]
+    TransferHookSet,
+    #[msg("A maker cannot take the other side of their own commitment")]
+    SelfMatch,
 }

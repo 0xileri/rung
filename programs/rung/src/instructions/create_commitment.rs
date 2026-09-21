@@ -5,7 +5,7 @@ use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 use crate::constants::*;
 use crate::errors::RungError;
 use crate::state::{CommitmentCreated, GlobalConfig, Market, Position, PositionStatus};
-use crate::utils::transfer_tokens;
+use crate::utils::{has_transfer_hook, transfer_tokens};
 
 #[derive(Accounts)]
 #[instruction(nonce: u64)]
@@ -93,6 +93,16 @@ pub fn create_commitment(
     require!(ctx.accounts.market.enabled, RungError::MarketDisabled);
     require!(stock_raw_required > 0, RungError::InvalidAmount);
     require!(strike_quote_amount > 0, RungError::InvalidAmount);
+
+    let cap = 10u64
+        .checked_pow(u32::from(ctx.accounts.quote_mint.decimals))
+        .and_then(|unit| unit.checked_mul(MAX_STRIKE_WHOLE_UNITS))
+        .ok_or(RungError::MathOverflow)?;
+    require!(strike_quote_amount <= cap, RungError::StrikeAboveCap);
+    require!(
+        !has_transfer_hook(&ctx.accounts.stock_mint.to_account_info())?,
+        RungError::TransferHookSet
+    );
 
     // Clock, not a client-supplied timestamp: expiry decides who ends up owning the
     // collateral, so it must be measured against something the caller cannot influence.

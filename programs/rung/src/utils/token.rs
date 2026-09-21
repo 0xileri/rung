@@ -1,5 +1,28 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token_2022::spl_token_2022::{
+    extension::{transfer_hook::TransferHook, BaseStateWithExtensions, StateWithExtensions},
+    state::Mint as MintState,
+};
 use anchor_spl::token_interface::{transfer_checked, TransferChecked};
+
+/// Whether a mint currently routes every transfer through a hook program.
+///
+/// Every PreStocks mint carries the TransferHook extension with no program set, and the
+/// issuer can set one at any time. From then on each transfer must pass the hook's extra
+/// accounts, which `transfer_tokens` does not, so escrowed tokens could not leave a vault
+/// through exercise or expiry until this program is upgraded. Callers refuse new collateral
+/// while a hook is set, so no fresh funds enter a vault that could not be settled normally.
+///
+/// A legacy SPL mint unpacks with no extensions, so it correctly reports `false`.
+pub fn has_transfer_hook(mint: &AccountInfo) -> Result<bool> {
+    let data = mint.try_borrow_data()?;
+    let state = StateWithExtensions::<MintState>::unpack(&data)?;
+    Ok(state
+        .get_extension::<TransferHook>()
+        // The all-zero key is how the extension encodes "no hook program".
+        .map(|hook| hook.program_id != Default::default())
+        .unwrap_or(false))
+}
 
 /// `transfer_checked` against either SPL Token or Token-2022, optionally PDA-signed.
 ///

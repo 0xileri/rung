@@ -1785,6 +1785,21 @@
       "code": 6015,
       "name": "SymbolTooLong",
       "msg": "Symbol exceeds the maximum length"
+    },
+    {
+      "code": 6016,
+      "name": "StrikeAboveCap",
+      "msg": "Strike exceeds the per-position cap"
+    },
+    {
+      "code": 6017,
+      "name": "TransferHookSet",
+      "msg": "Stock mint has a transfer hook set, which this program cannot yet settle through"
+    },
+    {
+      "code": 6018,
+      "name": "SelfMatch",
+      "msg": "A maker cannot take the other side of their own commitment"
     }
   ],
   "types": [
@@ -2199,6 +2214,20 @@
       "name": "MARKET_SEED",
       "type": "bytes",
       "value": "[109, 97, 114, 107, 101, 116]"
+    },
+    {
+      "name": "MAX_STRIKE_WHOLE_UNITS",
+      "docs": [
+        "Launch guardrail: the most quote currency, in whole units (dollars, for USDC), that one",
+        "position may lock.",
+        "",
+        "The program is unaudited and holds real funds on mainnet. A cap does not make a bug less",
+        "likely, it bounds what any one position can lose to one. Scaled by the quote mint's own",
+        "decimals at runtime, so it means the same thing whatever that mint is. Raising it is a",
+        "program upgrade on purpose: a limit an admin key could lift quietly is not much of one."
+      ],
+      "type": "u64",
+      "value": "1000"
     },
     {
       "name": "POSITION_AUTHORITY_SEED",

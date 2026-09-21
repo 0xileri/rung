@@ -4,6 +4,7 @@ use anchor_spl::token_interface::{Mint, TokenInterface};
 use crate::constants::{CONFIG_SEED, MARKET_SEED, SYMBOL_LEN};
 use crate::errors::RungError;
 use crate::state::{GlobalConfig, Market};
+use crate::utils::has_transfer_hook;
 
 #[derive(Accounts)]
 pub struct AddMarket<'info> {
@@ -38,6 +39,10 @@ pub fn add_market(ctx: Context<AddMarket>, symbol: String) -> Result<()> {
     require!(
         symbol.len() <= SYMBOL_LEN,
         RungError::SymbolTooLong
+    );
+    require!(
+        !has_transfer_hook(&ctx.accounts.stock_mint.to_account_info())?,
+        RungError::TransferHookSet
     );
 
     let mut padded = [0u8; SYMBOL_LEN];

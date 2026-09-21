@@ -4,7 +4,7 @@ use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 use crate::constants::*;
 use crate::errors::RungError;
 use crate::state::{CommitmentMatched, GlobalConfig, Market, Position, PositionStatus};
-use crate::utils::transfer_tokens;
+use crate::utils::{has_transfer_hook, transfer_tokens};
 
 #[derive(Accounts)]
 pub struct AcceptCommitment<'info> {
@@ -100,6 +100,16 @@ pub fn accept_commitment(ctx: Context<AcceptCommitment>, stock_raw_to_send: u64)
     require!(
         ctx.accounts.position.status == PositionStatus::Open,
         RungError::InvalidState
+    );
+    // Harmless to the maker's funds, but it would print a "matched" position that no second
+    // party ever agreed to, which is exactly what the curve must not be able to show.
+    require!(
+        ctx.accounts.taker.key() != ctx.accounts.position.maker,
+        RungError::SelfMatch
+    );
+    require!(
+        !has_transfer_hook(&ctx.accounts.stock_mint.to_account_info())?,
+        RungError::TransferHookSet
     );
 
     let now = Clock::get()?.unix_timestamp;

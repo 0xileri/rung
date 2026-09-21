@@ -21,3 +21,13 @@ pub const MIN_EXPIRY_HORIZON_SECS: i64 = 60;
 
 /// Fixed width for the indexing symbol carried on `Market`.
 pub const SYMBOL_LEN: usize = 16;
+
+/// Launch guardrail: the most quote currency, in whole units (dollars, for USDC), that one
+/// position may lock.
+///
+/// The program is unaudited and holds real funds on mainnet. A cap does not make a bug less
+/// likely, it bounds what any one position can lose to one. Scaled by the quote mint's own
+/// decimals at runtime, so it means the same thing whatever that mint is. Raising it is a
+/// program upgrade on purpose: a limit an admin key could lift quietly is not much of one.
+#[constant]
+pub const MAX_STRIKE_WHOLE_UNITS: u64 = 1_000;

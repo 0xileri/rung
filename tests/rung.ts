@@ -9,7 +9,10 @@ import {
   getMintLen,
   createInitializeMintInstruction,
   createInitializeTransferFeeConfigInstruction,
+  createInitializeTransferHookInstruction,
+  createUpdateTransferHookInstruction,
   createAssociatedTokenAccountIdempotent,
+  createAccount,
   getAssociatedTokenAddressSync,
   getAccount,
   mintTo,
@@ -285,6 +288,21 @@ describe('rung', () => {
         assert.include(e.toString(), 'InvalidExpiry');
       }
     });
+
+    it('accepts a strike exactly at the per-position cap', async () => {
+      const p = await createCommitment({ stockRequired: 1000n, strike: usd(1_000), premium: usd(1), expiryOffsetSecs: 3600 });
+      const pos = await program.account.position.fetch(p.position);
+      assert.equal(pos.strikeQuoteEscrowed.toString(), usd(1_000).toString());
+    });
+
+    it('rejects a strike one base unit above the cap', async () => {
+      try {
+        await createCommitment({ stockRequired: 1000n, strike: usd(1_000).addn(1), premium: usd(1), expiryOffsetSecs: 3600 });
+        assert.fail('should have rejected');
+      } catch (e: any) {
+        assert.include(e.toString(), 'StrikeAboveCap');
+      }
+    });
   });
 
   describe('cancellation', () => {
@@ -368,6 +386,38 @@ describe('rung', () => {
         assert.fail('should have rejected');
       } catch (e: any) {
         assert.include(e.toString(), 'InsufficientCollateral');
+      }
+    });
+
+    it('refuses a maker taking their own commitment', async () => {
+      const p = await createCommitment({ stockRequired: 1_000_000n, strike: usd(10), premium: usd(1), expiryOffsetSecs: 3600 });
+      const makerStock = await createAssociatedTokenAccountIdempotent(connection, admin, stockMint, maker.publicKey, {}, TOKEN_2022_PROGRAM_ID);
+      // A second USDC account the maker owns. Reusing the ATA would trip Anchor's
+      // duplicate-mutable-account check first; this is the route that check does not cover.
+      const makerSecondQuote = await createAccount(connection, admin, quoteMint, maker.publicKey, Keypair.generate(), undefined, TOKEN_PROGRAM_ID);
+      try {
+        await program.methods
+          .acceptCommitment(new BN(grossUp(1_000_000n).toString()))
+          .accounts({
+            taker: maker.publicKey,
+            config: configPda,
+            market: marketPda,
+            position: p.position,
+            positionAuthority: p.authority,
+            stockMint,
+            quoteMint,
+            takerStockAccount: makerStock,
+            takerQuoteAccount: makerSecondQuote,
+            makerQuoteAccount: makerQuote,
+            stockVault: p.stockVault,
+            stockTokenProgram: TOKEN_2022_PROGRAM_ID,
+            quoteTokenProgram: TOKEN_PROGRAM_ID,
+          })
+          .signers([maker])
+          .rpc();
+        assert.fail('should have rejected');
+      } catch (e: any) {
+        assert.include(e.toString(), 'SelfMatch');
       }
     });
 
@@ -619,6 +669,107 @@ describe('rung', () => {
         assert.fail('should have rejected');
       } catch (e: any) {
         assert.match(e.toString(), /Unauthorized|has_one|ConstraintHasOne/);
+      }
+    });
+  });
+
+  /**
+   * Every real PreStocks mint carries the TransferHook extension with no program set, and the
+   * issuer can set one at any time. These mints reproduce both states.
+   */
+  describe('transfer hook guard', () => {
+    const SOME_HOOK_PROGRAM = Keypair.generate().publicKey;
+
+    async function hookMint(hookProgram: PublicKey) {
+      const kp = Keypair.generate();
+      const len = getMintLen([ExtensionType.TransferHook]);
+      const lamports = await connection.getMinimumBalanceForRentExemption(len);
+      await provider.sendAndConfirm(
+        new anchor.web3.Transaction().add(
+          SystemProgram.createAccount({ fromPubkey: admin.publicKey, newAccountPubkey: kp.publicKey, space: len, lamports, programId: TOKEN_2022_PROGRAM_ID }),
+          createInitializeTransferHookInstruction(kp.publicKey, admin.publicKey, hookProgram, TOKEN_2022_PROGRAM_ID),
+          createInitializeMintInstruction(kp.publicKey, STOCK_DECIMALS, admin.publicKey, null, TOKEN_2022_PROGRAM_ID),
+        ),
+        [kp],
+      );
+      return kp.publicKey;
+    }
+
+    const marketFor = (mint: PublicKey) =>
+      PublicKey.findProgramAddressSync([Buffer.from('market'), mint.toBuffer()], program.programId)[0];
+
+    const addMarket = (mint: PublicKey) =>
+      program.methods
+        .addMarket('HOOKED')
+        .accounts({
+          admin: admin.publicKey,
+          config: configPda,
+          market: marketFor(mint),
+          stockMint: mint,
+          stockTokenProgram: TOKEN_2022_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+
+    it('lists a mint whose hook extension is empty, as every PreStock is today', async () => {
+      const mint = await hookMint(PublicKey.default);
+      await addMarket(mint);
+      const market = await program.account.market.fetch(marketFor(mint));
+      assert.isTrue(market.enabled);
+    });
+
+    it('refuses to list a mint with a hook program set', async () => {
+      const mint = await hookMint(SOME_HOOK_PROGRAM);
+      try {
+        await addMarket(mint);
+        assert.fail('should have rejected');
+      } catch (e: any) {
+        assert.include(e.toString(), 'TransferHookSet');
+      }
+    });
+
+    it('refuses new commitments once the issuer sets a hook on a listed mint', async () => {
+      const mint = await hookMint(PublicKey.default);
+      await addMarket(mint);
+      await provider.sendAndConfirm(
+        new anchor.web3.Transaction().add(
+          createUpdateTransferHookInstruction(mint, admin.publicKey, SOME_HOOK_PROGRAM, [], TOKEN_2022_PROGRAM_ID),
+        ),
+      );
+
+      const nonce = nextNonce();
+      const [position] = PublicKey.findProgramAddressSync(
+        [Buffer.from('position'), maker.publicKey.toBuffer(), nonce.toArrayLike(Buffer, 'le', 8)],
+        program.programId,
+      );
+      const [authority] = PublicKey.findProgramAddressSync(
+        [Buffer.from('position_authority'), position.toBuffer()],
+        program.programId,
+      );
+      try {
+        await program.methods
+          .createCommitment(nonce, new BN(1000), usd(10), usd(1), new BN(Math.floor(Date.now() / 1000) + 3600), new BN(1))
+          .accounts({
+            maker: maker.publicKey,
+            config: configPda,
+            market: marketFor(mint),
+            position,
+            positionAuthority: authority,
+            stockMint: mint,
+            quoteMint,
+            makerQuoteAccount: makerQuote,
+            quoteVault: getAssociatedTokenAddressSync(quoteMint, authority, true, TOKEN_PROGRAM_ID),
+            stockVault: getAssociatedTokenAddressSync(mint, authority, true, TOKEN_2022_PROGRAM_ID),
+            stockTokenProgram: TOKEN_2022_PROGRAM_ID,
+            quoteTokenProgram: TOKEN_PROGRAM_ID,
+            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
+          })
+          .signers([maker])
+          .rpc();
+        assert.fail('should have rejected');
+      } catch (e: any) {
+        assert.include(e.toString(), 'TransferHookSet');
       }
     });
   });

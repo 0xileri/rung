@@ -1791,6 +1791,21 @@ export type Rung = {
       "code": 6015,
       "name": "symbolTooLong",
       "msg": "Symbol exceeds the maximum length"
+    },
+    {
+      "code": 6016,
+      "name": "strikeAboveCap",
+      "msg": "Strike exceeds the per-position cap"
+    },
+    {
+      "code": 6017,
+      "name": "transferHookSet",
+      "msg": "Stock mint has a transfer hook set, which this program cannot yet settle through"
+    },
+    {
+      "code": 6018,
+      "name": "selfMatch",
+      "msg": "A maker cannot take the other side of their own commitment"
     }
   ],
   "types": [
@@ -2205,6 +2220,20 @@ export type Rung = {
       "name": "marketSeed",
       "type": "bytes",
       "value": "[109, 97, 114, 107, 101, 116]"
+    },
+    {
+      "name": "maxStrikeWholeUnits",
+      "docs": [
+        "Launch guardrail: the most quote currency, in whole units (dollars, for USDC), that one",
+        "position may lock.",
+        "",
+        "The program is unaudited and holds real funds on mainnet. A cap does not make a bug less",
+        "likely, it bounds what any one position can lose to one. Scaled by the quote mint's own",
+        "decimals at runtime, so it means the same thing whatever that mint is. Raising it is a",
+        "program upgrade on purpose: a limit an admin key could lift quietly is not much of one."
+      ],
+      "type": "u64",
+      "value": "1000"
     },
     {
       "name": "positionAuthoritySeed",
