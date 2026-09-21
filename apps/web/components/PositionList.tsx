@@ -7,7 +7,7 @@ import { fetchPositions, CLUSTER, type Position } from '../lib/chain';
 import { derivePositionAuthority } from '../lib/program';
 import { PublicKey, type ParsedAccountData } from '@solana/web3.js';
 import { activeMultiplier, rawToUi } from '../../../packages/sdk/src/token2022.ts';
-import { daysUntil, explorer, fromQuote, shortKey, usd, valuation } from '../lib/format';
+import { dateTime, daysUntil, explorer, fromQuote, shortKey, usd, valuation } from '../lib/format';
 import { PositionActions } from './PositionActions';
 
 /**
@@ -173,6 +173,20 @@ export function PositionList() {
         const strike = fromQuote(p.strikeQuoteEscrowed || p.strikeQuoteAmount);
         const premium = fromQuote(p.premiumQuoteAmount);
         const settled = p.status === 'Exercised' || p.status === 'Expired' || p.status === 'Cancelled';
+        const pastExpiry = !settled && Date.now() / 1000 >= p.expiryTs;
+
+        // Every date is read off the Position account, which records each transition.
+        const timeline: { label: string; ts: number }[] = [{ label: 'Created', ts: p.createdAt }];
+        if (p.matchedAt > 0) timeline.push({ label: 'Matched', ts: p.matchedAt });
+        if (settled) {
+          // An expiry is settled by whoever cranks it, some time after the deadline itself.
+          if (p.status === 'Expired') timeline.push({ label: 'Expired', ts: p.expiryTs });
+          if (p.settledAt > 0) {
+            timeline.push({ label: p.status === 'Expired' ? 'Settled' : p.status, ts: p.settledAt });
+          }
+        } else {
+          timeline.push({ label: pastExpiry ? 'Expired' : 'Expires', ts: p.expiryTs });
+        }
 
         return (
           <article key={p.pubkey} className="card" style={{ padding: '22px 24px' }}>
@@ -182,7 +196,7 @@ export function PositionList() {
                 alignItems: 'baseline',
                 gap: 14,
                 flexWrap: 'wrap',
-                marginBottom: 18,
+                marginBottom: 10,
               }}
             >
               <span className="label">{isMaker ? 'Valuation buyer' : 'Downside protection'}</span>
@@ -194,11 +208,22 @@ export function PositionList() {
               </span>
               <span style={{ flexGrow: 1 }} />
               {!settled && (
-                <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>
-                  {daysUntil(p.expiryTs)}d to expiry
+                <span style={{ fontSize: 12, color: pastExpiry ? 'var(--caution)' : 'var(--text-faint)' }}>
+                  {pastExpiry ? 'Past expiry, ready to settle' : `${daysUntil(p.expiryTs)}d to expiry`}
                 </span>
               )}
             </header>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 22px', marginBottom: 18 }}>
+              {timeline.map((t) => (
+                <div key={t.label} style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{t.label}</span>
+                  <time className="fig" dateTime={new Date(t.ts * 1000).toISOString()} style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    {dateTime(t.ts)}
+                  </time>
+                </div>
+              ))}
+            </div>
 
             <div
               style={{

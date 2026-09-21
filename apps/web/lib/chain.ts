@@ -37,6 +37,10 @@ export type Position = {
   premiumQuoteAmount: bigint;
   expiryTs: number;
   createdAt: number;
+  /** 0 until a holder takes the other side. */
+  matchedAt: number;
+  /** 0 until exercised, cancelled or expired. */
+  settledAt: number;
   targetValuationUsd: number;
   status: Status;
 };
@@ -97,6 +101,8 @@ function mapDecoded(pubkey: PublicKey, p: Record<string, unknown>): Position {
     premiumQuoteAmount: big(field(p, 'premium_quote_amount', 'premiumQuoteAmount')),
     expiryTs: num(field(p, 'expiry_ts', 'expiryTs')),
     createdAt: num(field(p, 'created_at', 'createdAt')),
+    matchedAt: num(field(p, 'matched_at', 'matchedAt')),
+    settledAt: num(field(p, 'settled_at', 'settledAt')),
     targetValuationUsd: num(field(p, 'target_valuation_usd', 'targetValuationUsd')),
     status: decodeStatus(field(p, 'status', 'status') as Record<string, unknown>),
   };

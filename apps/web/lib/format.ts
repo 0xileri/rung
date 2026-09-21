@@ -40,6 +40,17 @@ export function shortKey(key: string, lead = 4, tail = 4): string {
   return key.length <= lead + tail + 1 ? key : `${key.slice(0, lead)}…${key.slice(-tail)}`;
 }
 
+/** "Sep 20, 2026, 7:06 PM" in the viewer's own timezone. */
+export function dateTime(unixSeconds: number): string {
+  return new Date(unixSeconds * 1000).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 export function daysUntil(unixSeconds: number): number {
   return Math.max(0, Math.ceil((unixSeconds - Date.now() / 1000) / 86400));
 }
