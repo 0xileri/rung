@@ -109,9 +109,16 @@ absent counterparty can trap collateral that is owed back.
 ```bash
 npm install
 npm run test:sdk                      # 35 tests, no chain needed
-bash scripts/wsl/test-local.sh        # 18 tests against a local validator
+bash scripts/wsl/test-local.sh        # 24 tests against a local validator
+bash scripts/wsl/fork-test.sh         # every instruction against the REAL mints, on a mainnet fork
 node scripts/verify-chain.ts          # re-check the mint against live mainnet
 ```
+
+The fork test is the one that matters before touching mainnet. It loads the live OpenAI and
+SpaceX mint accounts (every extension intact), mainnet's Token-2022 program and feature set,
+and warps past the epoch where the 1% fee took effect, then runs create, accept, exercise,
+cancel and expire with quantities computed by the SDK exactly as the web app computes them.
+Nothing is sent to mainnet.
 
 `verify-chain.ts` is worth running before any demo: the transfer fee is on an epoch schedule,
 so yesterday's numbers are not evidence.
@@ -120,10 +127,23 @@ so yesterday's numbers are not evidence.
 
 **Live:** https://rung.up.railway.app
 
-- Program: **18/18** tests — full lifecycle, both settlement paths, and every refusal in the
-  state machine
+- Program: **24/24** tests — full lifecycle, both settlement paths, every refusal in the
+  state machine, and the launch guardrails below
+- Mainnet fork: **27/27** checks against the real OpenAI and SpaceX mints
 - SDK: **35/35** tests, pinned against live mainnet values
 - Every instruction has a UI: commit, take the other side, exercise, cancel, settle expiry
+
+### Launch guardrails
+
+Enforced by the program, not just the interface:
+
+- **$1,000 cap per position.** Unaudited code should not be able to lose more than that on
+  one position. Raising it takes a program upgrade, not an admin toggle.
+- **Transfer-hook guard.** Every PreStocks mint carries an empty transfer-hook slot the
+  issuer can fill at any time. Rung does not pass hook accounts, so it refuses to list, open
+  or match against a mint with a hook set, rather than take collateral it could not settle.
+- **No self-matching.** A maker cannot take their own commitment, so a "matched" position
+  always has two parties.
 
 ### Deployed on devnet
 
@@ -135,11 +155,13 @@ so yesterday's numbers are not evidence.
 | Mock OPENAI mint | [`3Q43N1W6s77VTn2g9Tzp56p6WshVBUzRWknQeh3TVwR6`](https://explorer.solana.com/address/3Q43N1W6s77VTn2g9Tzp56p6WshVBUzRWknQeh3TVwR6?cluster=devnet) |
 | Mock USDC | [`CRUjjjByxTpUfeAhR377RTdpmravXXgSX6eTk93XxBov`](https://explorer.solana.com/address/CRUjjjByxTpUfeAhR377RTdpmravXXgSX6eTk93XxBov?cluster=devnet) |
 
-PreStocks exist only on mainnet, so the escrowed token on devnet is a **mock** — and it
-deliberately carries the same extensions as the real OpenAI PreStock: 9 decimals, a
-0.5% transfer fee and the 1.4861347 scaled-amount multiplier. A mock
-without those would demo a path the real asset never takes. It is labelled as a mock on every
-screen it appears on, and **valuation data is live from the real PreStocks API throughout**.
+PreStocks exist only on mainnet, so the escrowed token on devnet is a **mock**. It carries
+the extensions that change the program's arithmetic: 9 decimals, a transfer fee and the
+real OpenAI PreStock's 1.4861347 scaled-amount multiplier. It is not a full replica: it
+charges 0.5% where the real mint now charges 1%, and it lacks the real mints' transfer-hook
+slot, pause switch and confidential-transfer extensions, which is why the fork test above
+exists. It is labelled as a mock on every screen it appears on, and **valuation data is live
+from the real PreStocks API throughout**.
 
 This is **unaudited** hackathon software.
 

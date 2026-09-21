@@ -31,13 +31,20 @@ The pause case has a sharper edge worth naming: if transfers are paused across a
 expiry, the holder can lose their exercise window through no fault of their own. The
 protocol does not currently extend the deadline to compensate.
 
+Every PreStocks mint also carries a `transferHook` extension with no program set, and the
+same key can set one at any time. Rung's transfers do not pass a hook's extra accounts, so a
+hook would stop them. The program therefore refuses to list, open or match against a mint
+with a hook set, which keeps new collateral out; positions already matched when a hook
+appears cannot settle until the program is upgraded to pass the hook's accounts.
+
 ## Transfer fees make the round trip lossy
 
 PreStocks mints charge a transfer fee, so an amount sent is never the amount that arrives.
 Collateral passes through a vault twice — in on match, out on settlement — and is charged
-both times. At the time of writing the fee was 50 bps, stepping to 100 bps at epoch 1039,
-giving a round-trip cost of roughly 1% rising to 2%. Against a premium of ~4.6% that is
-material, and the Reality Check screen shows it rather than quietly absorbing it.
+both times. The fee stepped from 50 bps to 100 bps at epoch 1039, so each transfer now costs
+1% and the round trip about 2%, and the issuer can change it again. Against a premium of a
+few percent that is material, and the Reality Check screen shows it rather than quietly
+absorbing it.
 
 The protocol does not subsidize or rebate this. It measures what actually arrives and
 settles against that.
@@ -86,9 +93,15 @@ target valuation describes the world at the moment it was created, not today.
 
 - **Unaudited.** Written for a hackathon under a deadline. Nothing here has had a security
   review, and it should not custody funds anyone cannot afford to lose.
-- **Demo runs on devnet against a mock mint.** PreStocks tokens exist only on mainnet, so
-  the devnet demo uses a Token-2022 mint reproducing the real transfer-fee behaviour. It is
-  labelled as a mock wherever it appears; it is not a real PreStock.
+- **Capped at $1,000 per position** (`MAX_STRIKE_WHOLE_UNITS`). The program refuses a larger
+  strike, which bounds what any one position can lose to a bug. Raising it is a program
+  upgrade.
+- **Upgradeable by one key.** The program's upgrade authority is a single key held by its
+  developer, which could change the code that controls the vaults.
+- **The devnet demo uses a mock mint.** PreStocks tokens exist only on mainnet, so devnet
+  escrows a Token-2022 mint with the real multiplier and a transfer fee. It is labelled as a
+  mock wherever it appears; it is not a real PreStock. The real mints are exercised by
+  `scripts/wsl/fork-test.sh` on a local mainnet fork.
 - **Live valuation data is real** in every environment, read from the PreStocks API.
 - **Jurisdiction.** PreStocks provide economic exposure to private-company-linked assets and
   may be restricted in some jurisdictions. Rung is experimental software and is not
