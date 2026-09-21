@@ -97,7 +97,10 @@ export function CommitPanel({
     };
   }, [connection, wallet.publicKey, stockMint]);
 
-  const quote = useMemo(() => {
+  // quoteStrike throws RangeErrors that mean something to the user -- a size too small to
+  // represent on-chain, a non-positive price. Returning null used to hide the Reality Check
+  // and grey out the button with no explanation, so the reason is kept and shown instead.
+  const quoteResult = useMemo((): { quote: ReturnType<typeof quoteStrike> } | { error: string } => {
     const asset: PreStockAsset = {
       symbol,
       name: symbol,
@@ -109,18 +112,20 @@ export function CommitPanel({
       supply: 0,
     };
     try {
-      return quoteStrike({
+      return { quote: quoteStrike({
         asset,
         targetValuation: target,
         strikeUsd: size,
         decimals,
         multiplier,
         transferFee: { epoch: 0n, transferFeeBasisPoints: feeBps, maximumFee: 2n ** 64n - 1n },
-      });
-    } catch {
-      return null;
+      }) };
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : String(e) };
     }
   }, [symbol, stockMint, target, size, decimals, multiplier, feeBps, impliedValuation, markPrice, markValuation]);
+  const quote = 'quote' in quoteResult ? quoteResult.quote : null;
+  const quoteError = 'error' in quoteResult ? quoteResult.error : null;
 
   const premiumPct = size > 0 ? premium / size : 0;
   const busy = phase.kind === 'working';
@@ -325,6 +330,22 @@ export function CommitPanel({
           </div>
         </fieldset>
       </div>
+
+      {quoteError && (
+        <p
+          style={{
+            fontSize: 12,
+            lineHeight: 1.5,
+            color: 'var(--danger)',
+            background: 'var(--danger-wash)',
+            borderRadius: 'var(--radius-sm)',
+            padding: '10px 12px',
+            margin: '0 0 4px',
+          }}
+        >
+          Cannot quote this position: {quoteError}
+        </p>
+      )}
 
       {quote && (
         <div
