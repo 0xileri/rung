@@ -59,6 +59,19 @@ export function escrowTargetFor(symbol: string, mainnetMint: string): EscrowTarg
   };
 }
 
+export type MintedAsset = { symbol: string; contract_address: string };
+
+/**
+ * Which PreStock a stock mint stands for. On devnet the mock maps to the asset it mimics,
+ * so it can be valued at that asset's live price; on mainnet the mint is the asset's own.
+ */
+export function symbolForMint(mint: string, assets: MintedAsset[]): string | null {
+  if (CLUSTER !== 'mainnet-beta') {
+    for (const [symbol, m] of Object.entries(MARKETS)) if (m.mint === mint) return symbol;
+  }
+  return assets.find((a) => a.contract_address === mint)?.symbol ?? null;
+}
+
 /** Symbols tradable on this deployment, for pointing people at them. */
 export const LISTED_SYMBOLS: string[] = CLUSTER === 'mainnet-beta' ? [] : Object.keys(MARKETS);
 
