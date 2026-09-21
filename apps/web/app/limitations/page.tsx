@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { MAX_STRIKE_USD } from '../../lib/program';
 
 export const metadata = { title: 'Limitations — Rung' };
 
@@ -46,6 +47,12 @@ export default function Limitations() {
             the holder can lose their exercise window through no fault of their own. Rung does
             not extend the deadline to compensate.
           </p>
+          <p>
+            Every PreStocks mint also carries an empty <strong>transfer hook</strong> slot the
+            issuer can fill at any time. Rung does not pass a hook&rsquo;s accounts, so if one is
+            set the program refuses new positions on that PreStock, and positions already
+            matched cannot settle until Rung is upgraded to support it.
+          </p>
         </>,
       )}
 
@@ -54,8 +61,8 @@ export default function Limitations() {
         <p style={{ marginTop: 0 }}>
           PreStocks mints charge a transfer fee, so the amount sent is never the amount that
           arrives. Collateral passes through a vault twice &mdash; in on match, out on settlement
-          &mdash; and is charged both times, currently around 1% rising to 2% when the
-          mint&rsquo;s scheduled fee increase takes effect. Against a premium of roughly 4.6%
+          &mdash; and is charged both times. Each transfer currently costs 1%, so the round trip
+          costs about 2%, and the issuer can change the rate. Against a premium of a few percent
           that is material, so the Reality Check shows it rather than absorbing it quietly.
           Rung does not subsidise or rebate it.
         </p>,
@@ -110,6 +117,16 @@ export default function Limitations() {
           <li>
             <strong>Unaudited.</strong> Built for a hackathon under a deadline. It should not
             custody funds anyone cannot afford to lose.
+          </li>
+          <li>
+            <strong>Capped at ${MAX_STRIKE_USD.toLocaleString()} per position.</strong> The
+            program itself refuses a larger strike, which bounds what any one position can lose
+            to a bug. Raising the cap takes a program upgrade.
+          </li>
+          <li>
+            <strong>Upgradeable by one key.</strong> The program&rsquo;s upgrade authority is a
+            single key held by its developer, which could change the code that controls the
+            vaults. Treat that as part of the trust you extend.
           </li>
           <li>
             The devnet demo uses a Token-2022 mint reproducing the real transfer-fee behaviour. It

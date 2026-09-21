@@ -10,6 +10,7 @@ import {
   explainError,
   getProgram,
   loadProtocolAccounts,
+  MAX_STRIKE_USD,
   type ProtocolAccounts,
   type ProtocolLoadResult,
 } from '../lib/program';
@@ -101,6 +102,13 @@ export function CommitPanel({
   // represent on-chain, a non-positive price. Returning null used to hide the Reality Check
   // and grey out the button with no explanation, so the reason is kept and shown instead.
   const quoteResult = useMemo((): { quote: ReturnType<typeof quoteStrike> } | { error: string } => {
+    // Checked here as well as on chain so the limit is explained before anyone signs,
+    // rather than discovered as a failed transaction.
+    if (Number.isFinite(MAX_STRIKE_USD) && size > MAX_STRIKE_USD) {
+      return {
+        error: `Rung caps each position at $${MAX_STRIKE_USD.toLocaleString()} while the program is unaudited.`,
+      };
+    }
     const asset: PreStockAsset = {
       symbol,
       name: symbol,
@@ -281,6 +289,7 @@ export function CommitPanel({
             <input
               type="number"
               min={1}
+              max={Number.isFinite(MAX_STRIKE_USD) ? MAX_STRIKE_USD : undefined}
               step={1}
               value={size}
               onChange={(e) => setSize(Math.max(0, Number(e.target.value)))}

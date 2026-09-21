@@ -26,6 +26,27 @@ export default async function ProtectPage({ params }: { params: Promise<{ symbol
 
   const escrow = escrowTargetFor(asset.symbol, asset.contract_address);
   const marketVsMark = relativeTo(asset.impliedValuation, asset.markValuation);
+
+  // The fee schedule and multiplier must describe the token actually being escrowed. On
+  // devnet that is the mock, whose one fee is known; sizing against the real mint's higher
+  // slot there made holders send about 0.5% more than needed. On mainnet it is the live
+  // mint, and without it the quantities cannot be trusted, so accepting is refused.
+  const feeSlots = escrow.mock
+    ? { older: escrow.feeBps ?? 0, newer: escrow.feeBps ?? 0, newerEpoch: '0' }
+    : mint
+      ? {
+          older: mint.transferFeeConfig.olderTransferFee.transferFeeBasisPoints,
+          newer: mint.transferFeeConfig.newerTransferFee.transferFeeBasisPoints,
+          newerEpoch: mint.transferFeeConfig.newerTransferFee.epoch.toString(),
+        }
+      : null;
+  const disabledReason = escrow.mock
+    ? undefined
+    : !mint
+      ? 'The live mint could not be read just now, and its fee schedule and multiplier decide what you send. Reload in a moment.'
+      : mint.transferHookProgramId
+        ? 'The issuer has attached a transfer hook to this PreStock, which Rung cannot settle through yet, so it is not taking new positions.'
+        : undefined;
   const name = asset.name.replace(' PreStocks', '');
 
   return (
@@ -68,11 +89,10 @@ export default async function ProtectPage({ params }: { params: Promise<{ symbol
         symbol={asset.symbol}
         stockMint={escrow.mint}
         decimals={escrow.decimals ?? mint?.decimals ?? 9}
-        feeSlots={{
-          older: mint?.transferFeeConfig.olderTransferFee.transferFeeBasisPoints ?? escrow.feeBps ?? 50,
-          newer: mint?.transferFeeConfig.newerTransferFee.transferFeeBasisPoints ?? escrow.feeBps ?? 100,
-          newerEpoch: mint?.transferFeeConfig.newerTransferFee.epoch.toString() ?? '0',
-        }}
+        multiplier={escrow.multiplier ?? mint?.multiplier ?? 1}
+        // Only reached with null when disabledReason is set, which blocks accepting.
+        feeSlots={feeSlots ?? { older: 100, newer: 100, newerEpoch: '0' }}
+        disabledReason={disabledReason}
       />
 
       <p style={{ fontSize: 12, lineHeight: 1.55, color: 'var(--text-faint)', marginTop: 24 }}>

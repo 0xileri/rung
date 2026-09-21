@@ -71,6 +71,11 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
   const decimals = escrow.decimals ?? mint?.decimals ?? 9;
   const multiplier = escrow.multiplier ?? mint?.multiplier ?? 1;
   const feeBps = escrow.feeBps ?? mint?.transferFee.transferFeeBasisPoints ?? 0;
+  // When the real mint is escrowed, its live state is not optional: the multiplier decides
+  // how many tokens a strike is worth (1.486 for OpenAI, 5 for SpaceX), and the fallbacks
+  // above would mis-size a position by exactly that factor. Refuse to quote instead.
+  const liveMintMissing = !escrow.mock && !mint;
+  const hookSet = !escrow.mock && Boolean(mint?.transferHookProgramId);
   const bands = valuationBands(asset.markValuation, 6);
 
   const fetched = await fetchPositions();
@@ -135,6 +140,23 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
           The mark and implied valuations disagree on this asset&rsquo;s share count, so the
           proportional valuation mapping does not currently hold. Commitment creation is
           disabled.
+        </p>
+      )}
+
+      {(liveMintMissing || hookSet) && (
+        <p className="callout callout-caution" style={{ marginBottom: 20 }}>
+          {hookSet ? (
+            <>
+              <strong>Not taking new positions.</strong> The issuer has attached a transfer hook
+              to this PreStock, which Rung cannot settle through yet.
+            </>
+          ) : (
+            <>
+              <strong>Commitments paused.</strong> The live mint could not be read just now, and
+              its scaled-amount multiplier decides how many tokens a strike is worth. Reload in a
+              moment rather than commit against a guess.
+            </>
+          )}
         </p>
       )}
 
@@ -243,7 +265,7 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
             multiplier={multiplier}
             feeBps={feeBps}
             bands={bands}
-            disabled={!feedConsistent}
+            disabled={!feedConsistent || liveMintMissing || hookSet}
           />
 
           <section className="card" style={{ padding: '20px 22px' }}>

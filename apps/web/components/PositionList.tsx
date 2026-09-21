@@ -5,7 +5,8 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { fetchPositions, CLUSTER, type Position } from '../lib/chain';
 import { derivePositionAuthority } from '../lib/program';
-import { PublicKey } from '@solana/web3.js';
+import { PublicKey, type ParsedAccountData } from '@solana/web3.js';
+import { activeMultiplier, rawToUi } from '../../../packages/sdk/src/token2022.ts';
 import { daysUntil, explorer, fromQuote, shortKey, usd, valuation } from '../lib/format';
 import { PositionActions } from './PositionActions';
 
@@ -34,6 +35,53 @@ export function PositionList() {
   // Kept so an empty result can distinguish "you have none" from "none exist at all".
   const [totalOnChain, setTotalOnChain] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Per-mint display scale. Wallets show the multiplier-scaled amount, so a raw quantity
+  // here would disagree with them by that factor (1.486 for OpenAI, 5 for SpaceX).
+  const [mintScale, setMintScale] = useState<Record<string, { decimals: number; multiplier: number }>>({});
+
+  useEffect(() => {
+    if (!positions?.length) return;
+    const mints = [...new Set(positions.map((p) => p.stockMint))];
+    let live = true;
+    (async () => {
+      const infos = await connection.getMultipleParsedAccounts(mints.map((m) => new PublicKey(m)));
+      const now = Math.floor(Date.now() / 1000);
+      const out: Record<string, { decimals: number; multiplier: number }> = {};
+      infos.value.forEach((acc, i) => {
+        const info = (acc?.data as ParsedAccountData | undefined)?.parsed?.info;
+        if (!info) return;
+        const cfg = (info.extensions as { extension: string; state: Record<string, string> }[] | undefined)?.find(
+          (e) => e.extension === 'scaledUiAmountConfig',
+        )?.state;
+        out[mints[i]] = {
+          decimals: Number(info.decimals),
+          multiplier: cfg
+            ? activeMultiplier(
+                {
+                  multiplier: Number(cfg.multiplier),
+                  newMultiplier: Number(cfg.newMultiplier),
+                  newMultiplierEffectiveTimestamp: Number(cfg.newMultiplierEffectiveTimestamp),
+                },
+                now,
+              )
+            : 1,
+        };
+      });
+      if (live) setMintScale(out);
+    })().catch(() => {
+      // Nothing to recover: quantities render labelled "raw" until a scale is known, so a
+      // failure here is visible rather than silently mis-scaled.
+    });
+    return () => {
+      live = false;
+    };
+  }, [connection, positions]);
+
+  const quantity = (mint: string, raw: bigint, digits: number) => {
+    const s = mintScale[mint];
+    return s ? rawToUi(raw, s.decimals, s.multiplier).toFixed(digits) : `${raw.toString()} raw`;
+  };
 
   const load = useCallback(async () => {
     if (!publicKey) return;
@@ -169,7 +217,7 @@ export function PositionList() {
               />
               <Field
                 label="PreStock quantity"
-                value={(Number(p.stockRawEscrowed || p.stockRawRequired) / 1e9).toFixed(8)}
+                value={quantity(p.stockMint, p.stockRawEscrowed || p.stockRawRequired, 8)}
               />
             </div>
 
@@ -197,7 +245,7 @@ export function PositionList() {
               />
               <Line
                 label="PreStock escrowed"
-                value={(Number(p.stockRawEscrowed) / 1e9).toFixed(9)}
+                value={quantity(p.stockMint, p.stockRawEscrowed, 9)}
                 ok={p.stockRawEscrowed >= p.stockRawRequired}
                 settled={settled}
               />

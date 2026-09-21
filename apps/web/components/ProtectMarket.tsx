@@ -8,6 +8,7 @@ import {
   grossUpForRequired,
   worstCaseTransferFee,
   amountReceived,
+  rawToUi,
   type TransferFee,
 } from '../../../packages/sdk/src/token2022.ts';
 import {
@@ -41,12 +42,18 @@ export function ProtectMarket({
   symbol,
   stockMint,
   decimals,
+  multiplier,
   feeSlots,
+  disabledReason,
 }: {
   symbol: string;
   stockMint: string;
   decimals: number;
+  /** Active ScaledUiAmount multiplier, so quantities match what the holder's wallet shows. */
+  multiplier: number;
   feeSlots: { older: number; newer: number; newerEpoch: string };
+  /** Set when accepting would be unsafe to size or would be refused on chain. */
+  disabledReason?: string;
 }) {
   const { connection } = useConnection();
   const wallet = useWallet();
@@ -138,7 +145,9 @@ export function ProtectMarket({
     [wallet, protocol, connection, worstFee, load],
   );
 
-  const ui = (raw: bigint) => Number(raw) / 10 ** decimals;
+  // Scaled by the multiplier: wallets display the UI amount, and a raw figure here would
+  // disagree with them by that factor (5x for SpaceX).
+  const ui = (raw: bigint) => rawToUi(raw, decimals, multiplier);
 
   if (positions === null) {
     return (
@@ -259,7 +268,13 @@ export function ProtectMarket({
                 </button>
               </div>
 
-              {isOpen && (
+              {isOpen && disabledReason && (
+                <p className="callout callout-caution" style={{ margin: '4px 0 0' }}>
+                  {disabledReason}
+                </p>
+              )}
+
+              {isOpen && !disabledReason && (
                 <div style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 18 }}>
                   <div className="label" style={{ marginBottom: 12 }}>
                     Protection check

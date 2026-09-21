@@ -57,6 +57,8 @@ export type MintState = {
   freezeAuthority: string | null;
   paused: boolean;
   transferHookProgramId: string | null;
+  /** Who can set or change the hook. Present on every PreStock, even with no hook set. */
+  transferHookAuthority: string | null;
 };
 
 type RpcCall = (method: string, params: unknown[]) => Promise<any>;
@@ -131,6 +133,7 @@ export async function fetchMintState(mint: string, rpc: RpcCall): Promise<MintSt
     freezeAuthority: info.freezeAuthority ?? null,
     paused: Boolean(ext(exts, 'pausableConfig')?.paused),
     transferHookProgramId: ext(exts, 'transferHook')?.programId ?? null,
+    transferHookAuthority: ext(exts, 'transferHook')?.authority ?? null,
   };
 }
 
@@ -146,8 +149,16 @@ export function custodyCaveats(state: MintState): string[] {
     out.push(`Issuer holds freeze authority (${state.freezeAuthority}) and can freeze the vault account.`);
   if (state.paused)
     out.push('Transfers are currently PAUSED by the issuer; exercise and expiry cannot settle.');
-  else if (state.transferHookProgramId)
-    out.push(`A transfer hook (${state.transferHookProgramId}) runs on every transfer.`);
+  // Rung passes no hook accounts, so a hook stops its transfers. The program refuses new
+  // positions while one is set; ones already matched wait for a program upgrade.
+  if (state.transferHookProgramId)
+    out.push(
+      `A transfer hook (${state.transferHookProgramId}) is set. Rung is refusing new positions, and matched ones cannot settle until the program is upgraded to support it.`,
+    );
+  else if (state.transferHookAuthority)
+    out.push(
+      `Issuer (${state.transferHookAuthority}) can attach a transfer hook at any time. If it does, Rung stops taking new positions and matched ones cannot settle until the program is upgraded.`,
+    );
   if (state.transferFee.transferFeeBasisPoints > 0)
     out.push(`${state.transferFee.transferFeeBasisPoints / 100}% transfer fee applies on entry and on payout.`);
   return out;

@@ -17,6 +17,16 @@ import { PROGRAM_ID } from './chain';
  * a fee to learn that.
  */
 
+/**
+ * The program's per-position cap, in whole quote units (dollars). Read from the IDL so the
+ * form's limit cannot drift from the one the program enforces.
+ */
+export const MAX_STRIKE_USD = Number(
+  (idl as { constants: { name: string; value: string }[] }).constants.find(
+    (c) => c.name === 'MAX_STRIKE_WHOLE_UNITS',
+  )?.value,
+);
+
 export const CONFIG_SEED = Buffer.from('config');
 export const MARKET_SEED = Buffer.from('market');
 export const POSITION_SEED = Buffer.from('position');
@@ -219,6 +229,10 @@ export function explainError(err: unknown): string {
     PositionExpired: 'This position has passed its expiry and can no longer be exercised.',
     PositionNotExpired: 'This position has not reached its expiry yet.',
     InvalidStockMint: 'The PreStock mint does not match this position.',
+    StrikeAboveCap: `Rung caps each position at $${MAX_STRIKE_USD.toLocaleString()} while it is unaudited.`,
+    TransferHookSet:
+      'The issuer has attached a transfer hook to this PreStock, which Rung cannot settle through yet, so it is not taking new positions.',
+    SelfMatch: 'You cannot take the other side of your own commitment.',
   };
   for (const [key, message] of Object.entries(named)) {
     if (text.includes(key)) return message;
