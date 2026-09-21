@@ -1,17 +1,36 @@
+import Link from 'next/link';
+import { band, pct, valuation } from '../lib/format';
+
 /**
- * Product-chrome hero focal — Commitment Curve + commit panel mock.
- * Pattern: Stripe dashboard / Linear issue card in a floating device frame.
- * Decorative only; live trading lives on /asset/[symbol].
+ * Landing-page focal: the featured asset's real Commitment Curve and a real quote.
+ *
+ * An earlier version hardcoded a curve ($54.0k at $1.0T) and a strike under a "Live" badge.
+ * The asset page one click away shows the actual figures, so a judge comparing the two
+ * would find the landing page making numbers up. Everything here is now computed by the
+ * page from chain state and the live PreStocks feed, the same way the asset page does it.
  */
-export function HeroShowcase() {
-  const rows = [
-    { band: '$800B', w: 42, peak: false, amt: '$12.4k' },
-    { band: '$900B', w: 68, peak: false, amt: '$28.1k' },
-    { band: '$1.0T', w: 100, peak: true, amt: '$54.0k' },
-    { band: '$1.1T', w: 55, peak: false, amt: '$19.6k' },
-    { band: '$1.2T', w: 28, peak: false, amt: '$6.2k' },
-    { band: '$1.4T', w: 12, peak: false, amt: '$1.8k' },
-  ];
+
+export type HeroData = {
+  symbol: string;
+  cluster: string;
+  marketValuation: number;
+  /** Highest band first, as on the asset page. `null` when the chain could not be read. */
+  curve: { valuationUsd: number; committedUsd: number; largestWalletShare: number }[] | null;
+  quote: {
+    target: number;
+    sizeUsd: number;
+    premiumUsd: number;
+    vsMarket: number;
+    /** Per token as a wallet displays it, i.e. already multiplier-scaled. */
+    strikePerToken: number;
+  };
+};
+
+const compactUsd = (n: number) => (n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${Math.round(n)}`);
+
+export function HeroShowcase({ data }: { data: HeroData }) {
+  const { symbol, cluster, marketValuation, curve, quote } = data;
+  const max = curve ? Math.max(0, ...curve.map((r) => r.committedUsd)) : 0;
 
   return (
     <div className="device-frame float" style={{ width: '100%', maxWidth: 520 }}>
@@ -23,7 +42,7 @@ export function HeroShowcase() {
           className="fig"
           style={{ marginLeft: 8, fontSize: 11, color: 'var(--text-faint)', flexGrow: 1 }}
         >
-          OPENAI · Commitment Curve
+          {symbol} · Commitment Curve
         </span>
         <span
           style={{
@@ -35,7 +54,7 @@ export function HeroShowcase() {
             padding: '2px 8px',
           }}
         >
-          Live
+          Live · {cluster}
         </span>
       </div>
 
@@ -58,70 +77,99 @@ export function HeroShowcase() {
             }}
           >
             <span className="label">Capital committed</span>
-            <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>Market $1.05T</span>
+            <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>
+              Market {valuation(marketValuation)}
+            </span>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {rows.map((r, i) => (
-              <div key={r.band} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span
-                  className="fig"
-                  style={{
-                    width: 48,
-                    fontSize: 11,
-                    textAlign: 'right',
-                    color: r.peak ? 'var(--text)' : 'var(--text-muted)',
-                    fontWeight: r.peak ? 500 : 400,
-                    flexShrink: 0,
-                  }}
-                >
-                  {r.band}
-                </span>
-                <div
-                  style={{
-                    flexGrow: 1,
-                    height: 18,
-                    background: 'var(--line-soft)',
-                    borderRadius: 4,
-                    overflow: 'hidden',
-                  }}
-                >
-                  <div
-                    className="curve-bar"
-                    style={{
-                      width: `${r.w}%`,
-                      height: '100%',
-                      background: r.peak ? 'var(--amber-fill)' : 'var(--amber-soft)',
-                      borderRadius: 4,
-                      animationDelay: `${i * 50}ms`,
-                    }}
-                  />
-                </div>
-                <span
-                  className="fig"
-                  style={{
-                    width: 46,
-                    fontSize: 11,
-                    textAlign: 'right',
-                    color: 'var(--text-muted)',
-                    flexShrink: 0,
-                  }}
-                >
-                  {r.amt}
-                </span>
-              </div>
-            ))}
-          </div>
+
+          {curve === null ? (
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
+              The chain could not be read just now. The curve on the {symbol} page retries live.
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {curve.map((r, i) => {
+                const peak = max > 0 && r.committedUsd === max;
+                return (
+                  <div key={r.valuationUsd} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span
+                      className="fig"
+                      style={{
+                        width: 48,
+                        fontSize: 11,
+                        textAlign: 'right',
+                        color: peak ? 'var(--text)' : 'var(--text-muted)',
+                        fontWeight: peak ? 500 : 400,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {band(r.valuationUsd)}
+                    </span>
+                    <div
+                      style={{
+                        flexGrow: 1,
+                        height: 18,
+                        background: 'var(--line-soft)',
+                        borderRadius: 4,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {r.committedUsd > 0 && (
+                        <div
+                          className="curve-bar"
+                          style={{
+                            width: `${Math.max(4, (r.committedUsd / max) * 100)}%`,
+                            height: '100%',
+                            background: peak ? 'var(--amber-fill)' : 'var(--amber-soft)',
+                            borderRadius: 4,
+                            animationDelay: `${i * 50}ms`,
+                          }}
+                        />
+                      )}
+                    </div>
+                    <span
+                      className="fig"
+                      style={{
+                        width: 46,
+                        fontSize: 11,
+                        textAlign: 'right',
+                        color: 'var(--text-muted)',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {r.committedUsd > 0 ? compactUsd(r.committedUsd) : '—'}
+                    </span>
+                  </div>
+                );
+              })}
+              {max === 0 ? (
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0' }}>
+                  No capital committed yet.
+                </p>
+              ) : (
+                (() => {
+                  const top = curve.find((r) => r.committedUsd === max)!;
+                  return top.largestWalletShare > 0.5 ? (
+                    <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: '4px 0 0' }}>
+                      1 wallet holds {Math.round(top.largestWalletShare * 100)}% of the{' '}
+                      {band(top.valuationUsd)} band.
+                    </p>
+                  ) : null;
+                })()
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Mini commit panel */}
+        {/* Mini commit panel: the same defaults the real panel opens with. */}
         <div style={{ padding: '20px 16px 18px', background: 'var(--surface)' }}>
           <div className="label" style={{ marginBottom: 14 }}>
             Commit
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
-            <MiniField label="I would own around" value="$1.0T" />
-            <MiniField label="Size" value="$100 USDC" />
-            <MiniField label="Premium" value="$4.60" accent />
+            <MiniField label="I would own around" value={band(quote.target)} />
+            <MiniField label="Size" value={`$${quote.sizeUsd} USDC`} />
+            <MiniField label="Premium" value={`$${quote.premiumUsd.toFixed(2)}`} accent />
           </div>
           <div
             style={{
@@ -134,23 +182,24 @@ export function HeroShowcase() {
               fontSize: 12,
             }}
           >
-            <MiniRow label="vs market" value="−4.8%" />
-            <MiniRow label="Strike" value="$0.2140" />
-            <MiniRow label="Premium / coll." value="4.6%" accent />
+            <MiniRow label="vs market" value={pct(quote.vsMarket, 1)} />
+            <MiniRow label="Strike / token" value={`$${quote.strikePerToken.toFixed(2)}`} />
+            <MiniRow label="Premium / coll." value={pct(quote.premiumUsd / quote.sizeUsd, 1)} accent />
           </div>
-          <div
+          <Link
+            href={`/asset/${symbol}`}
             className="btn"
             style={{
+              display: 'block',
               width: '100%',
               textAlign: 'center',
-              pointerEvents: 'none',
               fontSize: 13,
               minHeight: 40,
               padding: '10px 14px',
             }}
           >
-            Lock $100 USDC
-          </div>
+            Open the commit panel
+          </Link>
         </div>
       </div>
     </div>

@@ -1,10 +1,18 @@
 import Link from 'next/link';
 import { MeshWash } from '../components/Fragments';
-import { HeroShowcase } from '../components/HeroShowcase';
-import { pct, valuation } from '../lib/format';
-import { relativeTo, isFeedConsistent } from '../../../packages/sdk/src/valuation.ts';
+import { HeroShowcase, type HeroData } from '../components/HeroShowcase';
+import { fromQuote, pct, valuation } from '../lib/format';
+import {
+  relativeTo,
+  isFeedConsistent,
+  targetTokenPrice,
+  valuationBands,
+} from '../../../packages/sdk/src/valuation.ts';
 import type { PreStockAsset } from '../../../packages/sdk/src/valuation.ts';
+import { buildCurve } from '../../../packages/sdk/src/commitment-curve.ts';
 import { getPreStocks } from '../lib/prestocks-cache';
+import { CLUSTER, fetchPositions, toOpenCommitments } from '../lib/chain';
+import { escrowTargetFor } from '../lib/deployment';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,9 +28,50 @@ async function loadMarkets(): Promise<{ assets: PreStockAsset[]; stale: boolean 
   }
 }
 
+/**
+ * The hero's curve and quote, computed exactly as the asset page computes them: open
+ * positions read from chain for the mint this cluster escrows, bucketed into the same bands,
+ * and a strike from the live mark. A chain read failure yields `curve: null`, which the hero
+ * states, rather than an empty curve that would read as "nobody has committed".
+ */
+async function loadHero(featured: PreStockAsset | undefined): Promise<HeroData | null> {
+  if (!featured) return null;
+  const escrow = escrowTargetFor(featured.symbol, featured.contract_address);
+  const bands = valuationBands(featured.markValuation, 6);
+  const fetched = await fetchPositions();
+  const curve = fetched.ok
+    ? buildCurve(toOpenCommitments(fetched.positions, escrow.mint), bands).map((b) => ({
+        valuationUsd: b.valuationUsd,
+        committedUsd: fromQuote(b.committed),
+        largestWalletShare: b.largestWalletShare,
+      }))
+    : null;
+
+  // The commit panel's opening values: the band nearest 80% of the mark, $100, $4.60.
+  const target = bands.reduce(
+    (best, b) =>
+      Math.abs(b - featured.markValuation * 0.8) < Math.abs(best - featured.markValuation * 0.8) ? b : best,
+    bands[0],
+  );
+  return {
+    symbol: featured.symbol,
+    cluster: CLUSTER,
+    marketValuation: featured.impliedValuation,
+    curve,
+    quote: {
+      target,
+      sizeUsd: 100,
+      premiumUsd: 4.6,
+      vsMarket: relativeTo(target, featured.impliedValuation),
+      strikePerToken: targetTokenPrice(featured.markPrice, featured.markValuation, target),
+    },
+  };
+}
+
 export default async function Home() {
   const { assets, stale } = await loadMarkets();
   const featured = assets.find((a) => a.symbol === 'OPENAI') ?? assets[0];
+  const hero = await loadHero(featured);
 
   return (
     <>
@@ -131,7 +180,7 @@ export default async function Home() {
             </div>
 
             <div className="enter enter-delay-2" style={{ justifySelf: 'end', width: '100%' }}>
-              <HeroShowcase />
+              {hero && <HeroShowcase data={hero} />}
             </div>
           </div>
         </div>
