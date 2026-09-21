@@ -8,11 +8,22 @@
  * minted — so nobody can obtain them except from here. The deployer holds mint authority
  * over both, which is what makes this possible at all.
  *
+ * Tops the wallet up to 0.1 devnet SOL from the deployer too, since a fresh wallet has none
+ * and the devnet faucet is rate-limited.
+ *
  * Deliberately funds BOTH sides: a tester who can only make commitments can never see a
  * match, an exercise, or a position on the protection side, which is most of the product.
  */
 import { readFileSync, existsSync } from 'node:fs';
-import { Connection, Keypair, PublicKey } from '@solana/web3.js';
+import {
+  Connection,
+  Keypair,
+  LAMPORTS_PER_SOL,
+  PublicKey,
+  SystemProgram,
+  Transaction,
+  sendAndConfirmTransaction,
+} from '@solana/web3.js';
 import {
   TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
@@ -47,7 +58,12 @@ function env(): Record<string, string> {
 }
 
 const cfg = env();
-const connection = new Connection(cfg.DEVNET_RPC_URL ?? 'https://api.devnet.solana.com', 'confirmed');
+// FUND_RPC_URL overrides; otherwise public devnet. DEVNET_RPC_URL is not used here: it is
+// the deploy key's endpoint, and an exhausted quota there should not block funding a tester.
+const rpc = process.env.FUND_RPC_URL ?? cfg.FUND_RPC_URL ?? 'https://api.devnet.solana.com';
+const connection = new Connection(rpc, 'confirmed');
+/** Enough devnet SOL for a tester's fees and account rent across a full demo. */
+const SOL_FLOOR = 0.1;
 const deployment = JSON.parse(readFileSync('devnet.json', 'utf8'));
 const payer = Keypair.fromSecretKey(
   Uint8Array.from(JSON.parse(readFileSync(`${process.env.HOME}/.config/solana/id.json`, 'utf8'))),
@@ -79,8 +95,18 @@ async function main() {
   const sol = (await connection.getBalance(recipient)) / 1e9;
   console.log(`Recipient ${recipient.toBase58()}`);
   console.log(`  SOL balance: ${sol}`);
-  if (sol === 0) {
-    console.log('  WARNING: no SOL. Transactions will fail without it for fees and rent.');
+  // A fresh wallet has no SOL, and the devnet faucet is rate-limited; top it up from the
+  // deployer so the tester can pay fees and the rent for their position's accounts.
+  if (sol < SOL_FLOOR) {
+    const lamports = Math.round((SOL_FLOOR - sol) * LAMPORTS_PER_SOL);
+    await retry('top up SOL', () =>
+      sendAndConfirmTransaction(
+        connection,
+        new Transaction().add(SystemProgram.transfer({ fromPubkey: payer.publicKey, toPubkey: recipient, lamports })),
+        [payer],
+      ),
+    );
+    console.log(`  Topped up to ${SOL_FLOOR} SOL`);
   }
   console.log('');
 
@@ -110,9 +136,9 @@ async function main() {
   // Displayed in scaled UI units, which is what a wallet shows and what PreStocks quotes.
   console.log(`  mock OPENAI  ${(Number(s.amount) / 10 ** market.decimals) * market.multiplier} (UI) · ${s.amount} raw`);
   console.log('');
-  console.log('Both are MOCK tokens this project minted. The OPENAI mock carries the same');
-  console.log(`${market.feeBps / 100}% transfer fee and ${market.multiplier} multiplier as the real PreStock,`);
-  console.log('so your balance will drop slightly on every transfer. That is the mint, not a bug.');
+  console.log('Both are MOCK tokens this project minted. The OPENAI mock carries the real');
+  console.log(`PreStock's ${market.multiplier} multiplier and a ${market.feeBps / 100}% transfer fee, so your balance`);
+  console.log('drops slightly on every transfer. That is the mint, not a bug.');
 }
 
 main().catch((e) => {
