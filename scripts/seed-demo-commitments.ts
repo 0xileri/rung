@@ -2,7 +2,7 @@
  * Seed a few open OpenAI commitments on devnet so the Commitment Curve and the Protect page
  * have something real to show in a demo.
  *
- *   bash scripts/wsl/run.sh node scripts/seed-demo-commitments.ts [--dry-run]
+ *   bash scripts/wsl/run.sh node scripts/seed-demo-commitments.ts [--dry-run] [--reset]
  *
  * Signs with the deployer key (~/.config/solana/id.json), which setup-devnet funded with mock
  * USDC. Quantities come from the SDK's quoteStrike against the live PreStocks API -- the same
@@ -14,6 +14,7 @@
  * is recomputable from chain and live data.
  *
  * Re-running is safe. A target the deployer already has an Open commitment at is skipped.
+ * --reset cancels the deployer's open floors on this market first and seeds afresh.
  *
  * Uses public devnet unless SEED_RPC_URL is set. Only the host of that URL is ever printed,
  * because paid RPC URLs carry their API key in the query string.
@@ -44,6 +45,9 @@ const LADDER = [
 
 const rpc = process.env.SEED_RPC_URL ?? 'https://api.devnet.solana.com';
 const DRY_RUN = process.argv.includes('--dry-run');
+// Cancel the deployer's existing open floors first, e.g. ones quoted against a mark that
+// has since moved, so the curve shows only floors priced from today's data.
+const RESET = process.argv.includes('--reset');
 
 function randomNonce(): bigint {
   const b = new Uint8Array(8);
@@ -97,17 +101,46 @@ async function main() {
   const seeds = LADDER.map((rung, i) => ({ ...rung, target: floors[i] }));
 
   const existing = await program.account.position.all();
+  // Only ever the deployer's own open floors on this market: other wallets' positions are
+  // never touched, and cancel is refused for them on chain anyway.
+  const mineOpen = existing.filter((p) => {
+    const a = p.account as { maker: PublicKey; stockMint: PublicKey; status: object };
+    return (
+      a.maker.equals(payer.publicKey) &&
+      a.stockMint.equals(stockMint) &&
+      Object.keys(a.status)[0]?.toLowerCase() === 'open'
+    );
+  });
+
+  if (RESET && mineOpen.length > 0) {
+    const quoteAtaForCancel = getAssociatedTokenAddressSync(quoteMint, payer.publicKey, false, TOKEN_PROGRAM_ID);
+    for (const p of mineOpen) {
+      const target = (p.account as { targetValuationUsd: BN }).targetValuationUsd.toNumber();
+      console.log(`Cancel   ${valuationLabel(target)} ${p.publicKey.toBase58()}${DRY_RUN ? ' (dry run)' : ''}`);
+      if (DRY_RUN) continue;
+      const [authority] = PublicKey.findProgramAddressSync(
+        [Buffer.from('position_authority'), p.publicKey.toBuffer()],
+        programId,
+      );
+      await program.methods
+        .cancelCommitment()
+        .accounts({
+          maker: payer.publicKey,
+          position: p.publicKey,
+          positionAuthority: authority,
+          quoteMint,
+          quoteVault: getAssociatedTokenAddressSync(quoteMint, authority, true, TOKEN_PROGRAM_ID),
+          makerQuoteAccount: quoteAtaForCancel,
+          quoteTokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .rpc();
+    }
+  }
+
   const alreadyOpen = new Set(
-    existing
-      .filter((p) => {
-        const a = p.account as { maker: PublicKey; stockMint: PublicKey; status: object; targetValuationUsd: BN };
-        return (
-          a.maker.equals(payer.publicKey) &&
-          a.stockMint.equals(stockMint) &&
-          Object.keys(a.status)[0]?.toLowerCase() === 'open'
-        );
-      })
-      .map((p) => (p.account as { targetValuationUsd: BN }).targetValuationUsd.toString()),
+    RESET
+      ? []
+      : mineOpen.map((p) => (p.account as { targetValuationUsd: BN }).targetValuationUsd.toString()),
   );
   const todo = seeds.filter((s) => !alreadyOpen.has(String(Math.round(s.target))));
   for (const s of seeds) {

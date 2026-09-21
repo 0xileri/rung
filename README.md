@@ -111,6 +111,7 @@ npm install
 npm run test:sdk                      # 35 tests, no chain needed
 bash scripts/wsl/test-local.sh        # 24 tests against a local validator
 bash scripts/wsl/fork-test.sh         # every instruction against the REAL mints, on a mainnet fork
+node scripts/devnet-smoke.ts          # every instruction and guardrail against the live devnet deployment
 node scripts/verify-chain.ts          # re-check the mint against live mainnet
 ```
 
@@ -129,7 +130,7 @@ so yesterday's numbers are not evidence.
 
 - Program: **24/24** tests — full lifecycle, both settlement paths, every refusal in the
   state machine, and the launch guardrails below
-- Mainnet fork: **27/27** checks against the real OpenAI and SpaceX mints
+- Mainnet fork: **26/26** checks against the real OpenAI and SpaceX mints
 - SDK: **35/35** tests, pinned against live mainnet values
 - Every instruction has a UI: commit, take the other side, exercise, cancel, settle expiry
 
@@ -162,6 +163,33 @@ charges 0.5% where the real mint now charges 1%, and it lacks the real mints' tr
 slot, pause switch and confidential-transfer extensions, which is why the fork test above
 exists. It is labelled as a mock on every screen it appears on, and **valuation data is live
 from the real PreStocks API throughout**.
+
+### Mainnet readiness
+
+Rung runs on devnet for judging, where anyone can try both sides for free. Mainnet is one
+command away and has been rehearsed, but it is deliberately not live: the code is unaudited,
+and trying it there would need real PreStocks and USDC.
+
+What has been verified against mainnet itself:
+
+- **The real mints.** `scripts/wsl/fork-test.sh` runs every instruction against the live
+  OpenAI and SpaceX mint accounts on a local fork (26/26 checks), covering the extensions the
+  devnet mock lacks and SpaceX's 5x multiplier.
+- **Listing.** `node scripts/setup-mainnet.ts --dry-run` reads all 8 live PreStocks mints
+  and confirms each one can be listed against real USDC.
+- **Deploying.** `scripts/wsl/deploy-program.sh` has been rehearsed on devnet, which caught
+  two failures before they could cost real SOL.
+- **The interface.** On a real mint, the app refuses to quote without live mint data, shows
+  wallet-scaled quantities, and enforces the cap.
+
+Launching takes about 3.6 SOL at the peak of the deploy (about 3.0 with a size-optimized
+build, `opt-level = "z"`, which shrinks the binary from 349 KB to 294 KB). About half comes
+back when the upload finishes, and the rest is a refundable storage deposit. Then:
+
+```bash
+bash scripts/wsl/deploy-program.sh "$MAINNET_RPC_URL"
+node scripts/setup-mainnet.ts
+```
 
 This is **unaudited** hackathon software.
 
