@@ -30,6 +30,13 @@ export type EscrowTarget = {
   mint: string;
   /** True when this is a stand-in rather than the real PreStock. */
   mock: boolean;
+  /**
+   * Whether this deployment lists the asset at all. Known up front on devnet, where only
+   * the markets in devnet.json exist, so the page can say so before anyone fills in a form.
+   * On mainnet every PreStock is listed; the program's own allowlist is still read before
+   * signing either way.
+   */
+  listed: boolean;
   /** Present only for a mock, where we know the extension values we created it with. */
   decimals?: number;
   multiplier?: number;
@@ -37,19 +44,23 @@ export type EscrowTarget = {
 };
 
 export function escrowTargetFor(symbol: string, mainnetMint: string): EscrowTarget {
-  if (CLUSTER === 'mainnet-beta') return { mint: mainnetMint, mock: false };
+  if (CLUSTER === 'mainnet-beta') return { mint: mainnetMint, mock: false, listed: true };
 
   const m = MARKETS[symbol.toUpperCase()];
-  if (!m) return { mint: mainnetMint, mock: false };
+  if (!m) return { mint: mainnetMint, mock: false, listed: false };
 
   return {
     mint: m.mint,
     mock: m.mock,
+    listed: true,
     decimals: m.decimals,
     multiplier: m.multiplier,
     feeBps: m.feeBps,
   };
 }
+
+/** Symbols tradable on this deployment, for pointing people at them. */
+export const LISTED_SYMBOLS: string[] = CLUSTER === 'mainnet-beta' ? [] : Object.keys(MARKETS);
 
 export const DEPLOYMENT = {
   cluster: (devnet as { cluster?: string }).cluster ?? CLUSTER,

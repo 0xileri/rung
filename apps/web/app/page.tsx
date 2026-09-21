@@ -12,7 +12,7 @@ import type { PreStockAsset } from '../../../packages/sdk/src/valuation.ts';
 import { buildCurve } from '../../../packages/sdk/src/commitment-curve.ts';
 import { getPreStocks } from '../lib/prestocks-cache';
 import { CLUSTER, fetchPositions, toOpenCommitments } from '../lib/chain';
-import { escrowTargetFor } from '../lib/deployment';
+import { escrowTargetFor, LISTED_SYMBOLS } from '../lib/deployment';
 
 export const dynamic = 'force-dynamic';
 
@@ -248,6 +248,20 @@ export default async function Home() {
                   >
                     <span style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.02em' }}>
                       {name}
+                      {LISTED_SYMBOLS.includes(a.symbol) && (
+                        <span
+                          style={{
+                            marginLeft: 8,
+                            fontSize: 11,
+                            fontWeight: 500,
+                            letterSpacing: 0,
+                            color: 'var(--teal-ink)',
+                            verticalAlign: 'middle',
+                          }}
+                        >
+                          Tradable on {CLUSTER}
+                        </span>
+                      )}
                     </span>
                     <span
                       className="fig"

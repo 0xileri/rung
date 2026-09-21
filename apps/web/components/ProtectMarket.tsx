@@ -158,6 +158,11 @@ export function ProtectMarket({
   }
 
   if (positions.length === 0) {
+    // "No floors yet" would imply one could appear; when accepting is impossible here, the
+    // reason is the more useful thing to say.
+    if (disabledReason) {
+      return <p className="callout callout-caution" style={{ margin: 0 }}>{disabledReason}</p>;
+    }
     return (
       <p className="card" style={{ padding: '20px 22px', fontSize: 14, color: 'var(--text-muted)' }}>
         No floors available for {symbol} yet. A floor appears here as soon as someone commits

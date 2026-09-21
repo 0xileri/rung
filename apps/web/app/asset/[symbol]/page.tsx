@@ -7,7 +7,7 @@ import { buildCurve } from '../../../../../packages/sdk/src/commitment-curve.ts'
 import { valuationBands, relativeTo } from '../../../../../packages/sdk/src/valuation.ts';
 import { band, daysUntil, explorer, pct, shortKey, usd, fromQuote, valuation } from '../../../lib/format';
 import { getPreStocks, findAsset, getMintState } from '../../../lib/prestocks-cache';
-import { escrowTargetFor } from '../../../lib/deployment';
+import { escrowTargetFor, LISTED_SYMBOLS } from '../../../lib/deployment';
 import { custodyCaveats } from '../../../../../packages/sdk/src/prestocks.ts';
 import { isFeedConsistent } from '../../../../../packages/sdk/src/valuation.ts';
 
@@ -74,8 +74,9 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
   // When the real mint is escrowed, its live state is not optional: the multiplier decides
   // how many tokens a strike is worth (1.486 for OpenAI, 5 for SpaceX), and the fallbacks
   // above would mis-size a position by exactly that factor. Refuse to quote instead.
-  const liveMintMissing = !escrow.mock && !mint;
-  const hookSet = !escrow.mock && Boolean(mint?.transferHookProgramId);
+  const notListed = !escrow.listed;
+  const liveMintMissing = escrow.listed && !escrow.mock && !mint;
+  const hookSet = escrow.listed && !escrow.mock && Boolean(mint?.transferHookProgramId);
   const bands = valuationBands(asset.markValuation, 6);
 
   const fetched = await fetchPositions();
@@ -140,6 +141,20 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
           The mark and implied valuations disagree on this asset&rsquo;s share count, so the
           proportional valuation mapping does not currently hold. Commitment creation is
           disabled.
+        </p>
+      )}
+
+      {notListed && (
+        <p className="callout callout-caution" style={{ marginBottom: 20 }}>
+          <strong>Not tradable on this {CLUSTER} deployment.</strong> Only{' '}
+          {LISTED_SYMBOLS.map((s, i) => (
+            <span key={s}>
+              {i > 0 && ', '}
+              <Link href={`/asset/${s}`}>{s}</Link>
+            </span>
+          ))}{' '}
+          is listed here, against a mock token. {asset.symbol}&rsquo;s valuations above are live
+          all the same.
         </p>
       )}
 
@@ -265,7 +280,7 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
             multiplier={multiplier}
             feeBps={feeBps}
             bands={bands}
-            disabled={!feedConsistent || liveMintMissing || hookSet}
+            disabled={!feedConsistent || notListed || liveMintMissing || hookSet}
           />
 
           <section className="card" style={{ padding: '20px 22px' }}>

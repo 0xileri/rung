@@ -4,7 +4,7 @@ import { ProtectMarket } from '../../../components/ProtectMarket';
 import { getPreStocks, findAsset, getMintState } from '../../../lib/prestocks-cache';
 import { relativeTo } from '../../../../../packages/sdk/src/valuation.ts';
 import { pct, valuation } from '../../../lib/format';
-import { escrowTargetFor } from '../../../lib/deployment';
+import { escrowTargetFor, LISTED_SYMBOLS } from '../../../lib/deployment';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,11 +42,13 @@ export default async function ProtectPage({ params }: { params: Promise<{ symbol
       : null;
   const disabledReason = escrow.mock
     ? undefined
-    : !mint
-      ? 'The live mint could not be read just now, and its fee schedule and multiplier decide what you send. Reload in a moment.'
-      : mint.transferHookProgramId
-        ? 'The issuer has attached a transfer hook to this PreStock, which Rung cannot settle through yet, so it is not taking new positions.'
-        : undefined;
+    : !escrow.listed
+      ? `${asset.symbol} is not tradable on this deployment. Only ${LISTED_SYMBOLS.join(', ')} is listed here.`
+      : !mint
+        ? 'The live mint could not be read just now, and its fee schedule and multiplier decide what you send. Reload in a moment.'
+        : mint.transferHookProgramId
+          ? 'The issuer has attached a transfer hook to this PreStock, which Rung cannot settle through yet, so it is not taking new positions.'
+          : undefined;
   const name = asset.name.replace(' PreStocks', '');
 
   return (
