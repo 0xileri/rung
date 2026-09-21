@@ -11,8 +11,8 @@ export const metadata = { title: 'Limitations — Rung' };
  * every screen that makes a collateral claim, is the point.
  */
 
-const section = (title: string, body: React.ReactNode) => (
-  <section style={{ marginBottom: 34 }}>
+const section = (title: string, body: React.ReactNode, id?: string) => (
+  <section id={id} style={{ marginBottom: 34, scrollMarginTop: 80 }}>
     <h2 style={{ fontSize: 24, marginBottom: 10 }}>{title}</h2>
     <div style={{ fontSize: 15, lineHeight: 1.6, color: 'var(--text-muted)' }}>{body}</div>
   </section>
@@ -94,6 +94,36 @@ export default function Limitations() {
           design, since an agreement that silently rewrote itself would be worse. But an old
           position&rsquo;s stated target describes the world at the moment it was created.
         </p>,
+      )}
+
+      {section(
+        'P&L is a measure, not a valuation',
+        <>
+          <p style={{ marginTop: 0 }}>
+            A matched position is a put, so P&amp;L is measured against letting it expire, when
+            each side simply takes back its own collateral. Only two things move value between
+            the parties: the premium, and on exercise the swap of the vault&rsquo;s tokens for
+            the strike. The two sides&rsquo; figures are therefore exact opposites.
+          </p>
+          <ul style={{ paddingLeft: 18 }}>
+            <li>
+              A <strong>live</strong> position counts the swap only when exercising would pay the
+              holder, at today&rsquo;s market price. That is intrinsic value; no time value is
+              modelled, because that would be a claim about fair price, which Rung does not make.
+            </li>
+            <li>
+              An <strong>exercised</strong> position values the delivered tokens at today&rsquo;s
+              market price. The program clears its escrow record at settlement, so the delivered
+              quantity is taken from the required amount, which the escrow was sized to hit.
+            </li>
+            <li>An <strong>expired</strong> position is final: only the premium changed hands.</li>
+            <li>
+              <strong>Transfer fees are excluded.</strong> They go to the token issuer, not to
+              the counterparty, and are shown separately wherever they apply.
+            </li>
+          </ul>
+        </>,
+        'pnl',
       )}
 
       {section(

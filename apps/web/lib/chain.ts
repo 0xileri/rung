@@ -21,6 +21,14 @@ export const RPC_URL =
   process.env.NEXT_PUBLIC_SOLANA_RPC_URL ??
   (CLUSTER === 'localnet' ? 'http://127.0.0.1:8899' : `https://api.${CLUSTER}.solana.com`);
 
+/**
+ * The endpoint server-rendered pages read through. SOLANA_SERVER_RPC_URL is deliberately
+ * not NEXT_PUBLIC_: Next inlines only NEXT_PUBLIC_ variables into browser bundles, so a paid
+ * endpoint's key can live here without shipping to every visitor. Unset, the server uses the
+ * same public endpoint as the browser.
+ */
+const SERVER_RPC_URL = typeof window === 'undefined' ? process.env.SOLANA_SERVER_RPC_URL : undefined;
+
 /** Mirrors PositionStatus in the program. */
 export const STATUS = ['Open', 'Matched', 'Exercised', 'Expired', 'Cancelled'] as const;
 export type Status = (typeof STATUS)[number];
@@ -53,7 +61,7 @@ function decodeStatus(raw: Record<string, unknown>): Status {
   return (STATUS.find((s) => s.toLowerCase() === key) ?? 'Open') as Status;
 }
 
-export function connection(endpoint = RPC_URL): Connection {
+export function connection(endpoint = SERVER_RPC_URL ?? RPC_URL): Connection {
   return new Connection(endpoint, 'confirmed');
 }
 
@@ -81,7 +89,8 @@ function field<T = unknown>(p: Record<string, unknown>, snake: string, camel: st
 }
 
 export type PositionsResult =
-  | { ok: true; positions: Position[] }
+  /** `staleSeconds` is set when a server cache served an older read because a fresh one failed. */
+  | { ok: true; positions: Position[]; staleSeconds?: number }
   | { ok: false; detail: string };
 
 function mapDecoded(pubkey: PublicKey, p: Record<string, unknown>): Position {

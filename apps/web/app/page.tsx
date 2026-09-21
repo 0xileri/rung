@@ -11,7 +11,10 @@ import {
 import type { PreStockAsset } from '../../../packages/sdk/src/valuation.ts';
 import { buildCurve } from '../../../packages/sdk/src/commitment-curve.ts';
 import { getPreStocks } from '../lib/prestocks-cache';
-import { CLUSTER, fetchPositions, toOpenCommitments } from '../lib/chain';
+import { CLUSTER, connection, toOpenCommitments, type PositionsResult } from '../lib/chain';
+import { getPositionsCached } from '../lib/positions-cache';
+import { pnlForPosition, priceBook, readMintScales, totalPnl, type MintScale } from '../lib/pnl';
+import { ActivityBand, type Activity } from '../components/ActivityBand';
 import { escrowTargetFor, LISTED_SYMBOLS } from '../lib/deployment';
 
 export const dynamic = 'force-dynamic';
@@ -34,11 +37,10 @@ async function loadMarkets(): Promise<{ assets: PreStockAsset[]; stale: boolean 
  * and a strike from the live mark. A chain read failure yields `curve: null`, which the hero
  * states, rather than an empty curve that would read as "nobody has committed".
  */
-async function loadHero(featured: PreStockAsset | undefined): Promise<HeroData | null> {
+async function loadHero(featured: PreStockAsset | undefined, fetched: PositionsResult): Promise<HeroData | null> {
   if (!featured) return null;
   const escrow = escrowTargetFor(featured.symbol, featured.contract_address);
   const bands = valuationBands(featured.markValuation, 6);
-  const fetched = await fetchPositions();
   const curve = fetched.ok
     ? buildCurve(toOpenCommitments(fetched.positions, escrow.mint), bands).map((b) => ({
         valuationUsd: b.valuationUsd,
@@ -68,10 +70,38 @@ async function loadHero(featured: PreStockAsset | undefined): Promise<HeroData |
   };
 }
 
+/**
+ * Protocol-wide figures, every one computed from Position accounts on chain. P&L uses the
+ * same function as My Positions; since each position's two sides are exact opposites, the
+ * makers' total is the holders' total negated.
+ */
+async function loadActivity(assets: PreStockAsset[], fetched: PositionsResult): Promise<Activity | null> {
+  if (!fetched.ok) return null;
+  const positions = fetched.positions;
+  const open = positions.filter((p) => p.status === 'Open');
+  const matched = positions.filter((p) => p.matchedAt > 0);
+  const scales = await readMintScales(connection(), matched.map((p) => p.stockMint)).catch(
+    () => ({}) as Record<string, MintScale>,
+  );
+  const prices = priceBook(assets);
+  return {
+    committedUsd: open.reduce((s, p) => s + fromQuote(p.strikeQuoteEscrowed), 0),
+    openCount: open.length,
+    matchedCount: matched.length,
+    liveCount: matched.filter((p) => p.status === 'Matched').length,
+    premiumsUsd: matched.reduce((s, p) => s + fromQuote(p.premiumQuoteAmount), 0),
+    makers: totalPnl(matched.map((p) => pnlForPosition(p, 'maker', scales[p.stockMint], prices))),
+    staleSeconds: fetched.staleSeconds,
+  };
+}
+
 export default async function Home() {
   const { assets, stale } = await loadMarkets();
   const featured = assets.find((a) => a.symbol === 'OPENAI') ?? assets[0];
-  const hero = await loadHero(featured);
+  // One chain read shared by the hero curve and the activity band.
+  const fetched = await getPositionsCached();
+  const hero = await loadHero(featured, fetched);
+  const activity = await loadActivity(assets, fetched);
 
   return (
     <>
@@ -185,6 +215,8 @@ export default async function Home() {
           </div>
         </div>
       </section>
+
+      <ActivityBand activity={activity} cluster={CLUSTER} />
 
       <section className="wrap enter enter-delay-3" style={{ paddingBottom: 88 }}>
         <div

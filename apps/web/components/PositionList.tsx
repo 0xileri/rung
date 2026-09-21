@@ -5,19 +5,19 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { fetchPositions, CLUSTER, type Position } from '../lib/chain';
 import { derivePositionAuthority } from '../lib/program';
-import { PublicKey, type ParsedAccountData } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
+import { rawToUi } from '../../../packages/sdk/src/token2022.ts';
+import type { PnlBasis } from '../../../packages/sdk/src/pnl.ts';
 import {
-  activeMultiplier,
-  activeTransferFee,
-  amountReceived,
-  rawToUi,
-  type TransferFee,
-} from '../../../packages/sdk/src/token2022.ts';
-import { positionPnl, type PnlBasis } from '../../../packages/sdk/src/pnl.ts';
-import { symbolForMint, type MintedAsset } from '../lib/deployment';
-
-type MintScale = { decimals: number; multiplier: number; fee: TransferFee | null };
-import { dateTime, daysUntil, explorer, fromQuote, shortKey, usd, valuation } from '../lib/format';
+  pnlColor,
+  pnlForPosition,
+  readMintScales,
+  totalPnl,
+  type MintScale,
+  type PositionPnlView,
+} from '../lib/pnl';
+import { usePriceBook } from '../lib/use-price-book';
+import { dateTime, daysUntil, explorer, fromQuote, shortKey, signedUsd, usd, valuation } from '../lib/format';
 import { PositionActions } from './PositionActions';
 
 /**
@@ -53,48 +53,15 @@ export function PositionList() {
 
   useEffect(() => {
     if (!positions?.length) return;
-    const mints = [...new Set(positions.map((p) => p.stockMint))];
     let live = true;
-    (async () => {
-      const [infos, { epoch }] = await Promise.all([
-        connection.getMultipleParsedAccounts(mints.map((m) => new PublicKey(m))),
-        connection.getEpochInfo(),
-      ]);
-      const now = Math.floor(Date.now() / 1000);
-      const out: Record<string, MintScale> = {};
-      infos.value.forEach((acc, i) => {
-        const info = (acc?.data as ParsedAccountData | undefined)?.parsed?.info;
-        if (!info) return;
-        const exts = (info.extensions ?? []) as { extension: string; state: Record<string, any> }[];
-        const scale = exts.find((e) => e.extension === 'scaledUiAmountConfig')?.state;
-        const fees = exts.find((e) => e.extension === 'transferFeeConfig')?.state;
-        const toFee = (f: { epoch: number; transferFeeBasisPoints: number; maximumFee: number }): TransferFee => ({
-          epoch: BigInt(f.epoch),
-          transferFeeBasisPoints: Number(f.transferFeeBasisPoints),
-          maximumFee: BigInt(f.maximumFee),
-        });
-        out[mints[i]] = {
-          decimals: Number(info.decimals),
-          multiplier: scale
-            ? activeMultiplier(
-                {
-                  multiplier: Number(scale.multiplier),
-                  newMultiplier: Number(scale.newMultiplier),
-                  newMultiplierEffectiveTimestamp: Number(scale.newMultiplierEffectiveTimestamp),
-                },
-                now,
-              )
-            : 1,
-          fee: fees
-            ? activeTransferFee(
-                { olderTransferFee: toFee(fees.olderTransferFee), newerTransferFee: toFee(fees.newerTransferFee) },
-                BigInt(epoch),
-              )
-            : null,
-        };
-      });
-      if (live) setMintScale(out);
-    })().catch(() => {
+    readMintScales(
+      connection,
+      positions.map((p) => p.stockMint),
+    )
+      .then((out) => {
+        if (live) setMintScale(out);
+      })
+      .catch(() => {
       // Nothing to recover: quantities render labelled "raw", and P&L as unavailable, until
       // a scale is known, so a failure here is visible rather than silently mis-scaled.
     });
@@ -104,49 +71,10 @@ export function PositionList() {
   }, [connection, positions]);
 
   // Market price per UI token, by symbol, from the same server cache the asset pages use.
-  const [prices, setPrices] = useState<{ bySymbol: Record<string, number>; assets: MintedAsset[] } | null>(null);
-  useEffect(() => {
-    let live = true;
-    fetch('/api/prestocks')
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((body: { assets: (MintedAsset & { tokenPrice: number })[] }) => {
-        if (!live) return;
-        setPrices({
-          bySymbol: Object.fromEntries(body.assets.map((a) => [a.symbol, a.tokenPrice])),
-          assets: body.assets,
-        });
-      })
-      .catch(() => {
-        // P&L that needs a price then reads "unavailable" rather than being guessed.
-      });
-    return () => {
-      live = false;
-    };
-  }, []);
+  const prices = usePriceBook();
 
-  const pnlFor = (p: Position, side: 'maker' | 'holder') => {
-    const s = mintScale[p.stockMint];
-    const symbol = prices ? symbolForMint(p.stockMint, prices.assets) : null;
-    const price = symbol && prices ? prices.bySymbol[symbol] ?? null : null;
-    // Exercise and expiry zero the escrow fields once the vaults are empty. The required
-    // quantity stands in after that: the escrow was sized to land on it at the worse fee
-    // slot, so it matches what was delivered to within the slots' spread, and never exceeds it.
-    const escrowedRaw = p.stockRawEscrowed > 0n ? p.stockRawEscrowed : p.stockRawRequired;
-    const outRaw = s?.fee ? amountReceived(escrowedRaw, s.fee) : escrowedRaw;
-    return {
-      symbol,
-      price,
-      ...positionPnl({
-        side,
-        status: p.status,
-        strikeUsd: fromQuote(p.strikeQuoteEscrowed || p.strikeQuoteAmount),
-        premiumUsd: fromQuote(p.premiumQuoteAmount),
-        stockOutUi: s ? rawToUi(outRaw, s.decimals, s.multiplier) : 0,
-        // Without the mint's scale the token count is unknown, so no price can be applied.
-        tokenPrice: s ? price : null,
-      }),
-    };
-  };
+  const pnlFor = (p: Position, side: 'maker' | 'holder') =>
+    pnlForPosition(p, side, mintScale[p.stockMint], prices);
 
   const quantity = (mint: string, raw: bigint, digits: number) => {
     const s = mintScale[mint];
@@ -235,23 +163,20 @@ export function PositionList() {
     );
   }
 
-  const pnls = positions.map((p) => pnlFor(p, p.maker === publicKey?.toBase58() ? 'maker' : 'holder'));
-  const counted = pnls.filter((x) => x.basis !== 'none');
-  const unpriced = counted.filter((x) => x.usd === null).length;
-  const total = counted.reduce((sum, x) => sum + (x.usd ?? 0), 0);
+  const total = totalPnl(positions.map((p) => pnlFor(p, p.maker === publicKey?.toBase58() ? 'maker' : 'holder')));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {counted.length > 0 && (
+      {total.positions > 0 && (
         <section className="card" style={{ padding: '18px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap' }}>
             <span className="label">Net P&amp;L</span>
-            <span className="fig" style={{ fontSize: 26, color: pnlColor(unpriced === counted.length ? null : total) }}>
-              {unpriced === counted.length ? '—' : signedUsd(total)}
+            <span className="fig" style={{ fontSize: 26, color: pnlColor(total.empty ? null : total.usd) }}>
+              {total.empty ? '—' : signedUsd(total.usd)}
             </span>
             <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-              across {counted.length} matched position{counted.length === 1 ? '' : 's'}
-              {unpriced > 0 && `, ${unpriced} without a live price`}
+              across {total.positions} matched position{total.positions === 1 ? '' : 's'}
+              {total.unpriced > 0 && `, ${total.unpriced} without a live price`}
             </span>
           </div>
           <p style={{ fontSize: 12, lineHeight: 1.55, color: 'var(--text-faint)', margin: '8px 0 0' }}>
@@ -405,10 +330,6 @@ export function PositionList() {
   );
 }
 
-const signedUsd = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${usd(Math.abs(n))}`;
-const pnlColor = (n: number | null) =>
-  n === null || Math.abs(n) < 0.005 ? 'var(--text-muted)' : n > 0 ? 'var(--teal-ink)' : 'var(--danger)';
-
 const BASIS_NOTE: Record<PnlBasis, string> = {
   none: '',
   intrinsic: 'unrealized, exercise value',
@@ -421,7 +342,7 @@ function PnlField({
   pnl,
 }: {
   status: Position['status'];
-  pnl: { usd: number | null; basis: PnlBasis; price: number | null; symbol: string | null };
+  pnl: PositionPnlView;
 }) {
   let value: string;
   let note: string;

@@ -25,6 +25,11 @@ export function usd(amount: number, dp = 2): string {
   return `$${amount.toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp })}`;
 }
 
+/** A dollar gain or loss: +$4.60, −$8.23. */
+export function signedUsd(n: number): string {
+  return `${n > 0 ? '+' : n < 0 ? '−' : ''}${usd(Math.abs(n))}`;
+}
+
 /** Signed, because the whole point is how far a target sits from the market. */
 export function pct(fraction: number, dp = 2): string {
   const sign = fraction > 0 ? '+' : fraction < 0 ? '−' : '';

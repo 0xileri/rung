@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { CommitmentCurve } from '../../../components/CommitmentCurve';
 import { CommitPanel } from '../../../components/CommitPanel';
-import { fetchPositions, toOpenCommitments, CLUSTER } from '../../../lib/chain';
+import { toOpenCommitments, CLUSTER } from '../../../lib/chain';
+import { getPositionsCached } from '../../../lib/positions-cache';
 import { buildCurve } from '../../../../../packages/sdk/src/commitment-curve.ts';
 import { valuationBands, relativeTo } from '../../../../../packages/sdk/src/valuation.ts';
 import { band, daysUntil, explorer, pct, shortKey, usd, fromQuote, valuation } from '../../../lib/format';
@@ -79,8 +80,15 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
   const hookSet = escrow.listed && !escrow.mock && Boolean(mint?.transferHookProgramId);
   const bands = valuationBands(asset.markValuation, 6);
 
-  const fetched = await fetchPositions();
+  const fetched = await getPositionsCached();
   const open = fetched.ok ? toOpenCommitments(fetched.positions, escrow.mint) : [];
+  // An unreadable chain must not render as an empty market: that reads as "nobody has
+  // committed", which is a claim about the world rather than about the RPC.
+  const chainNote = !fetched.ok
+    ? 'The chain could not be read just now, so the curve and commitments below are not shown. Reload in a moment.'
+    : fetched.staleSeconds
+      ? `Showing chain state from ${Math.max(1, Math.round(fetched.staleSeconds / 60))} min ago: the RPC is busy.`
+      : null;
   const curve = buildCurve(open, bands);
   const marketVsMark = relativeTo(asset.impliedValuation, asset.markValuation);
 
@@ -194,7 +202,12 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
 
       <div className="split">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 22, minWidth: 0 }}>
-          <CommitmentCurve buckets={curve} marketValuationUsd={asset.impliedValuation} />
+          {chainNote && (
+            <p className={`callout ${fetched.ok ? '' : 'callout-caution'}`} style={{ margin: 0 }}>
+              {chainNote}
+            </p>
+          )}
+          {fetched.ok && <CommitmentCurve buckets={curve} marketValuationUsd={asset.impliedValuation} />}
 
           <section className="card" style={{ padding: '26px 28px' }}>
             <div
@@ -211,7 +224,11 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
                 Hold {asset.symbol}? Take the other side &rarr;
               </Link>
             </div>
-            {open.length === 0 ? (
+            {!fetched.ok ? (
+              <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
+                Unavailable while the chain cannot be read.
+              </p>
+            ) : open.length === 0 ? (
               <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
                 Nothing open yet. A commitment appears here the moment it is created, and stays
                 until a holder takes the other side or the maker cancels.
