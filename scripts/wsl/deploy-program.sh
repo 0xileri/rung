@@ -10,12 +10,13 @@
 # Only the RPC host is ever printed: paid endpoints carry their API key in the query string.
 #
 # Safe to re-run after a failure. The upload goes into a buffer whose keypair is kept at
-# target/deploy/rung-buffer-<host>.json, so a second attempt writes into the SAME buffer
-# rather than locking another ~1.75 SOL of rent in a fresh one. The file is deleted once the
-# deploy lands, because the CLI closes the buffer then.
+# target/deploy/rung-buffer-<host>.json, so a second attempt writes only the chunks still
+# missing from the SAME buffer rather than locking another ~1.75 SOL of rent in a fresh one.
+# The file is deleted once the deploy lands, because the buffer is consumed then.
 #
-# Always --use-rpc: the default path sends writes to the leader's TPU over QUIC, which fails
-# from a residential connection or WSL's NAT as "Max retries exceeded".
+# The CLI's own upload path is avoided: by default it sends to the leader's TPU over QUIC,
+# which fails from a residential connection or WSL's NAT as "Max retries exceeded", and with
+# --use-rpc it floods a public RPC into rate limiting.
 set -uo pipefail
 export PATH="$HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH"
 export NVM_DIR="$HOME/.nvm"
@@ -59,16 +60,25 @@ fi
 
 # No solana-keygen in the aarch64 from-source install; gen-keypair.mjs does the same job.
 [ -f "$BUFFER_KEYPAIR" ] || node scripts/wsl/gen-keypair.mjs "$BUFFER_KEYPAIR" >/dev/null || exit 1
-echo "==> Buffer   $(solana address -k "$BUFFER_KEYPAIR")"
+BUFFER=$(solana address -k "$BUFFER_KEYPAIR")
+echo "==> Buffer   $BUFFER"
 
-solana program deploy "$SO" \
-  --program-id "$PROGRAM_KEYPAIR" \
-  --buffer "$BUFFER_KEYPAIR" \
-  --url "$RPC" \
-  --use-rpc \
-  --with-compute-unit-price 50000 \
-  --max-sign-attempts 100
-STATUS=$?
+# The upload is paced by upload-buffer.mjs rather than left to the CLI: `solana program
+# deploy` sends writes as fast as it can, and against a public RPC that became 40 minutes
+# of 429s landing 23 of 349 chunks. Paced at ~3/s the same upload took two minutes.
+node scripts/wsl/upload-buffer.mjs "$BUFFER_KEYPAIR" "$RPC" "$SO" || { STATUS=1; }
+
+if [ "${STATUS:-0}" -eq 0 ]; then
+  if [ -n "${CURRENT:-}" ]; then
+    solana program upgrade "$BUFFER" "$PROGRAM_ID" --url "$RPC"
+  else
+    # Fresh deploy from the pre-written buffer. Not yet exercised: devnet has only ever been
+    # upgraded through this script.
+    solana program deploy --buffer "$BUFFER" --program-id "$PROGRAM_KEYPAIR" --url "$RPC" \
+      --use-rpc --with-compute-unit-price 50000
+  fi
+  STATUS=$?
+fi
 
 if [ "$STATUS" -eq 0 ]; then
   rm -f "$BUFFER_KEYPAIR"

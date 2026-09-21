@@ -1,0 +1,7 @@
+# Scripts run under bash in WSL straight from this Windows checkout. core.autocrlf=true
+# would rewrite them with CRLF on the next checkout, rebase or reset, and bash then fails
+# with "$'\r': command not found". Pin them to LF regardless of the local git config.
+*.sh   text eol=lf
+*.mjs  text eol=lf
+*.ts   text eol=lf
+*.rs   text eol=lf
