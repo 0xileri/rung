@@ -144,9 +144,14 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
           style={{ marginBottom: 20 }}
         >
           <strong>Devnet demo.</strong> PreStocks exist only on mainnet, so the token escrowed
-          here is a mock that reproduces the real mint&rsquo;s {escrow.feeBps ? escrow.feeBps / 100 : 0}%
-          transfer fee and {escrow.multiplier} scaled-amount multiplier. The valuations above are
-          live from the real PreStocks API.
+          here is a mock with the real mint&rsquo;s {escrow.multiplier} scaled-amount multiplier
+          and a {escrow.feeBps ? escrow.feeBps / 100 : 0}% transfer fee.
+          {/* The real fee is on an epoch schedule and has moved before; say so when they differ
+              rather than claim the mock matches. */}
+          {mint && mint.transferFee.transferFeeBasisPoints !== (escrow.feeBps ?? 0) && (
+            <> The real mint&rsquo;s fee is currently {mint.transferFee.transferFeeBasisPoints / 100}%.</>
+          )}{' '}
+          The valuations above are live from the real PreStocks API.
         </p>
       )}
 

@@ -50,9 +50,9 @@ export function targetTokenPrice(
   markValuation: number,
   targetValuation: number,
 ): number {
-  if (markPrice <= 0) throw new RangeError('markPrice must be positive');
-  if (markValuation <= 0) throw new RangeError('markValuation must be positive');
-  if (targetValuation <= 0) throw new RangeError('targetValuation must be positive');
+  if (markPrice <= 0) throw new RangeError('PreStocks is reporting a mark price of zero or less');
+  if (markValuation <= 0) throw new RangeError('PreStocks is reporting a mark valuation of zero or less');
+  if (targetValuation <= 0) throw new RangeError('target valuation must be greater than zero');
   return markPrice * (targetValuation / markValuation);
 }
 
@@ -107,13 +107,13 @@ export function quoteStrike(input: StrikeQuoteInput): StrikeQuote {
   const { asset, targetValuation, strikeUsd, decimals, multiplier, transferFee } = input;
   const usdcDecimals = input.usdcDecimals ?? 6;
 
-  if (strikeUsd <= 0) throw new RangeError('strikeUsd must be positive');
-  if (multiplier <= 0) throw new RangeError('multiplier must be positive');
+  if (strikeUsd <= 0) throw new RangeError('position size must be greater than zero');
+  if (multiplier <= 0) throw new RangeError('the mint reports a scaled-amount multiplier of zero or less');
 
   const price = targetTokenPrice(asset.markPrice, asset.markValuation, targetValuation);
   const uiQuantity = strikeUsd / price;
   const rawQuantity = uiToRaw(uiQuantity, decimals, multiplier);
-  if (rawQuantity <= 0n) throw new RangeError('strike is too small to represent on-chain');
+  if (rawQuantity <= 0n) throw new RangeError('position size is too small: it rounds to zero PreStock base units');
 
   const entryFee = calculateFee(rawQuantity, transferFee);
   const rawReceivedByVault = amountReceived(rawQuantity, transferFee);
