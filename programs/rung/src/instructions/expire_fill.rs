@@ -4,11 +4,11 @@ use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use crate::constants::*;
 use crate::errors::RungError;
-use crate::state::{Position, PositionExpiredEvent, PositionStatus};
+use crate::state::{Fill, FillStatus, Position, PositionExpiredEvent};
 use crate::utils::transfer_tokens;
 
 #[derive(Accounts)]
-pub struct ExpirePosition<'info> {
+pub struct ExpireFill<'info> {
     /// Anyone. They pay the transaction fee and any rent for the receiving accounts.
     #[account(mut)]
     pub cranker: Signer<'info>,
@@ -22,12 +22,24 @@ pub struct ExpirePosition<'info> {
     )]
     pub position: Box<Account<'info, Position>>,
 
+    /// Closed once settled. Its rent goes back to the taker who paid it at match, not to
+    /// whoever happened to crank the expiry.
+    #[account(
+        mut,
+        close = taker,
+        seeds = [FILL_SEED, position.key().as_ref(), &fill.index.to_le_bytes()],
+        bump = fill.bump,
+        has_one = position @ RungError::InvalidState,
+        has_one = taker @ RungError::Unauthorized,
+    )]
+    pub fill: Box<Account<'info, Fill>>,
+
     /// CHECK: Receives the returned USDC; ownership enforced by the ATA constraint below.
-    #[account(address = position.maker)]
+    #[account(mut, address = position.maker)]
     pub maker: UncheckedAccount<'info>,
 
-    /// CHECK: Receives the returned stock; ownership enforced by the ATA constraint below.
-    #[account(address = position.taker)]
+    /// CHECK: Receives the returned stock and the fill's rent; ownership enforced below.
+    #[account(mut, address = fill.taker)]
     pub taker: UncheckedAccount<'info>,
 
     /// CHECK: Vault authority PDA, validated by seeds.
@@ -80,7 +92,7 @@ pub struct ExpirePosition<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Unwind a position whose protection window has closed, returning both sides their own
+/// Unwind one fill whose protection window has closed, returning both sides their own
 /// collateral. The maker keeps the premium either way.
 ///
 /// Permissionless by design. If only the counterparties could trigger it, recovering your
@@ -88,9 +100,12 @@ pub struct ExpirePosition<'info> {
 /// crank this, so neither side can strand the other by disappearing. Like exercise, it
 /// ignores the pause and market flags: an administrative switch must never be able to trap
 /// collateral that is already owed back.
-pub fn expire_position(ctx: Context<ExpirePosition>) -> Result<()> {
+///
+/// The maker's unmatched remainder is not touched here. That capital was never claimed by a
+/// taker, and `cancel_commitment` returns it whenever the maker asks.
+pub fn expire_fill(ctx: Context<ExpireFill>) -> Result<()> {
     require!(
-        ctx.accounts.position.status == PositionStatus::Matched,
+        ctx.accounts.fill.status == FillStatus::Matched,
         RungError::InvalidState
     );
 
@@ -100,9 +115,10 @@ pub fn expire_position(ctx: Context<ExpirePosition>) -> Result<()> {
         RungError::PositionNotExpired
     );
 
-    let quote_amount = ctx.accounts.position.strike_quote_escrowed;
-    let stock_amount = ctx.accounts.position.stock_raw_escrowed;
+    let quote_amount = ctx.accounts.fill.strike_quote_amount;
+    let stock_amount = ctx.accounts.fill.stock_raw_escrowed;
     let position_key = ctx.accounts.position.key();
+    let fill_key = ctx.accounts.fill.key();
     let authority_bump = ctx.accounts.position.authority_bump;
     let seeds: &[&[u8]] = &[
         POSITION_AUTHORITY_SEED,
@@ -132,16 +148,28 @@ pub fn expire_position(ctx: Context<ExpirePosition>) -> Result<()> {
         Some(&[seeds]),
     )?;
 
+    let taker = ctx.accounts.fill.taker;
+    let fill = &mut ctx.accounts.fill;
+    fill.settled_at = now;
+    fill.status = FillStatus::Expired;
+
     let position = &mut ctx.accounts.position;
-    position.strike_quote_escrowed = 0;
-    position.stock_raw_escrowed = 0;
+    position.stock_raw_escrowed = position
+        .stock_raw_escrowed
+        .checked_sub(stock_amount)
+        .ok_or(RungError::MathOverflow)?;
+    position.fills_open = position
+        .fills_open
+        .checked_sub(1)
+        .ok_or(RungError::MathOverflow)?;
     position.settled_at = now;
-    position.status = PositionStatus::Expired;
+    position.status = position.derive_status();
 
     emit!(PositionExpiredEvent {
         position: position_key,
+        fill: fill_key,
         maker: position.maker,
-        taker: position.taker,
+        taker,
         quote_to_maker: quote_amount,
         stock_to_taker: stock_amount,
         settled_at: now,

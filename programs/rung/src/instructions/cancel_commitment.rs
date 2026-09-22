@@ -3,7 +3,7 @@ use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use crate::constants::*;
 use crate::errors::RungError;
-use crate::state::{CommitmentCancelled, Position, PositionStatus};
+use crate::state::{CommitmentCancelled, Position};
 use crate::utils::transfer_tokens;
 
 #[derive(Accounts)]
@@ -47,18 +47,15 @@ pub struct CancelCommitment<'info> {
     pub quote_token_program: Interface<'info, TokenInterface>,
 }
 
-/// Withdraw an unmatched commitment.
+/// Withdraw the part of a commitment no taker has claimed.
 ///
-/// Only valid while Open. Once a taker has locked stock against it the maker is committed
-/// for the full term: allowing a cancel after that would let the maker walk away from the
-/// protection they were paid a premium to provide.
+/// Unmatched capital was never promised to anyone, so the maker may pull it at any time,
+/// including after other slices have been filled. Capital already claimed by a fill is
+/// untouchable until that fill settles: allowing a cancel to reach it would let the maker
+/// walk away from protection they were paid a premium to provide.
 pub fn cancel_commitment(ctx: Context<CancelCommitment>) -> Result<()> {
-    require!(
-        ctx.accounts.position.status == PositionStatus::Open,
-        RungError::InvalidState
-    );
-
-    let amount = ctx.accounts.position.strike_quote_escrowed;
+    let amount = ctx.accounts.position.strike_quote_open;
+    require!(amount > 0, RungError::NothingOpen);
     let position_key = ctx.accounts.position.key();
     let authority_bump = ctx.accounts.position.authority_bump;
     let seeds: &[&[u8]] = &[
@@ -79,9 +76,11 @@ pub fn cancel_commitment(ctx: Context<CancelCommitment>) -> Result<()> {
     )?;
 
     let position = &mut ctx.accounts.position;
-    position.strike_quote_escrowed = 0;
+    position.strike_quote_open = 0;
     position.settled_at = Clock::get()?.unix_timestamp;
-    position.status = PositionStatus::Cancelled;
+    // Cancelled if nothing was ever taken; otherwise this is simply a commitment with no
+    // open amount left, whose fills still have to run their term.
+    position.status = position.derive_status();
 
     emit!(CommitmentCancelled {
         position: position_key,

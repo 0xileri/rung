@@ -83,7 +83,7 @@ async function main() {
 
     const send = grossUpForRequired(q.rawQuantity, worstCaseTransferFee(state.transferFeeConfig));
     const makerUsdc0 = await rung.balance(rung.usdcOf(maker.publicKey), TOKEN_PROGRAM_ID);
-    await rung.accept(h, send);
+    const fill = await rung.accept(h, send);
     const escrowed = BigInt((await program.account.position.fetch(h.position)).stockRawEscrowed.toString());
     const vault = await rung.balance(h.stockVault, TOKEN_2022_PROGRAM_ID);
     check(escrowed === vault, `accept records the vault's real balance (${vault})`);
@@ -93,7 +93,7 @@ async function main() {
     check(makerUsdc1 - makerUsdc0 === 3_000_000n, 'maker receives the $3 premium on match');
 
     const takerUsdc0 = await rung.balance(rung.usdcOf(taker.publicKey), TOKEN_PROGRAM_ID);
-    await rung.exercise(h);
+    await rung.exercise(h, fill);
     const takerUsdc1 = await rung.balance(rung.usdcOf(taker.publicKey), TOKEN_PROGRAM_ID);
     const makerStock = await rung.balance(rung.stockOf(mint, maker.publicKey), TOKEN_2022_PROGRAM_ID);
     check(takerUsdc1 - takerUsdc0 === 100_000_000n, 'exercise pays the holder the full $100');
@@ -119,12 +119,12 @@ async function main() {
   await rung.cancel(atCap);
 
   const e = await rung.create(mint, 1_000_000n, usd(10), usd(1), 62);
-  await rung.accept(e, grossUpForRequired(1_000_000n, worstCaseTransferFee(state.transferFeeConfig)));
+  const expiringFill = await rung.accept(e, grossUpForRequired(1_000_000n, worstCaseTransferFee(state.transferFeeConfig)));
   const eEscrowed = BigInt((await program.account.position.fetch(e.position)).stockRawEscrowed.toString());
   const takerStock0 = await rung.balance(rung.stockOf(mint, taker.publicKey), TOKEN_2022_PROGRAM_ID);
   const makerUsdcE = await rung.balance(rung.usdcOf(maker.publicKey), TOKEN_PROGRAM_ID);
   console.log('  waiting for the 62s expiry on the cluster clock…');
-  await rung.expireWhenDue(e);
+  await rung.expireWhenDue(e, expiringFill);
   const takerStock1 = await rung.balance(rung.stockOf(mint, taker.publicKey), TOKEN_2022_PROGRAM_ID);
   check(takerStock1 - takerStock0 === amountReceived(eEscrowed, state.transferFee), 'expire returns the holder their stock, net of the exit fee');
   check(

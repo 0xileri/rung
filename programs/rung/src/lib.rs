@@ -60,6 +60,16 @@ pub mod rung {
         instructions::set_paused::set_paused(ctx, paused)
     }
 
+    /// Set the protocol's cut of the premium, in basis points, and where it is paid.
+    pub fn set_fee(ctx: Context<SetFee>, fee_bps: u16) -> Result<()> {
+        instructions::set_fee::set_fee(ctx, fee_bps)
+    }
+
+    /// Set the smallest fill, and the smallest remainder a fill may leave behind.
+    pub fn set_min_fill(ctx: Context<SetMinFill>, min_fill_quote: u64) -> Result<()> {
+        instructions::set_min_fill::set_min_fill(ctx, min_fill_quote)
+    }
+
     /// Maker (valuation buyer) locks USDC against a target valuation.
     pub fn create_commitment(
         ctx: Context<CreateCommitment>,
@@ -85,18 +95,23 @@ pub mod rung {
         instructions::cancel_commitment::cancel_commitment(ctx)
     }
 
-    /// Taker (protection buyer) locks stock and pays the premium.
-    pub fn accept_commitment(ctx: Context<AcceptCommitment>, stock_raw_to_send: u64) -> Result<()> {
-        instructions::accept_commitment::accept_commitment(ctx, stock_raw_to_send)
+    /// Taker (protection buyer) locks stock and pays the premium, for part or all of a
+    /// commitment. Creates one `Fill`: their own claim on that slice of the collateral.
+    pub fn accept_commitment(
+        ctx: Context<AcceptCommitment>,
+        stock_raw_to_send: u64,
+        fill_strike_quote: u64,
+    ) -> Result<()> {
+        instructions::accept_commitment::accept_commitment(ctx, stock_raw_to_send, fill_strike_quote)
     }
 
-    /// Taker swaps the escrowed stock for the escrowed USDC. Only they may call it.
-    pub fn exercise_position(ctx: Context<ExercisePosition>) -> Result<()> {
-        instructions::exercise_position::exercise_position(ctx)
+    /// Taker swaps their fill's escrowed stock for its escrowed USDC. Only they may call it.
+    pub fn exercise_fill(ctx: Context<ExerciseFill>) -> Result<()> {
+        instructions::exercise_fill::exercise_fill(ctx)
     }
 
-    /// Return both collaterals after expiry. Permissionless.
-    pub fn expire_position(ctx: Context<ExpirePosition>) -> Result<()> {
-        instructions::expire_position::expire_position(ctx)
+    /// Return both collaterals for one fill after expiry. Permissionless.
+    pub fn expire_fill(ctx: Context<ExpireFill>) -> Result<()> {
+        instructions::expire_fill::expire_fill(ctx)
     }
 }

@@ -143,7 +143,6 @@ pub fn create_commitment(
 
     let position = &mut ctx.accounts.position;
     position.maker = ctx.accounts.maker.key();
-    position.taker = Pubkey::default();
     position.stock_mint = ctx.accounts.stock_mint.key();
     position.quote_mint = ctx.accounts.quote_mint.key();
     position.stock_token_program = ctx.accounts.stock_token_program.key();
@@ -153,12 +152,16 @@ pub fn create_commitment(
     position.stock_raw_escrowed = 0;
     position.strike_quote_amount = strike_quote_amount;
     position.strike_quote_escrowed = escrowed;
+    // Every fill is sized against what actually arrived, so the open amount starts there too.
+    position.strike_quote_open = escrowed;
     position.premium_quote_amount = premium_quote_amount;
     position.expiry_ts = expiry_ts;
     position.created_at = now;
-    position.matched_at = 0;
+    position.first_matched_at = 0;
     position.settled_at = 0;
     position.target_valuation_usd = target_valuation_usd;
+    position.fills_created = 0;
+    position.fills_open = 0;
     position.status = PositionStatus::Open;
     position.bump = ctx.bumps.position;
     position.authority_bump = ctx.bumps.position_authority;

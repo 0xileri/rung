@@ -16,7 +16,8 @@ export type Rung = {
     {
       "name": "acceptCommitment",
       "docs": [
-        "Taker (protection buyer) locks stock and pays the premium."
+        "Taker (protection buyer) locks stock and pays the premium, for part or all of a",
+        "commitment. Creates one `Fill`: their own claim on that slice of the collateral."
       ],
       "discriminator": [
         14,
@@ -107,6 +108,36 @@ export type Rung = {
           }
         },
         {
+          "name": "fill",
+          "docs": [
+            "This taker's claim on the commitment. Indexed by `position.fills_created`, which only",
+            "ever increases, so a settled fill's address is never handed out again."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  105,
+                  108,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "position"
+              },
+              {
+                "kind": "account",
+                "path": "position.fillsCreated",
+                "account": "position"
+              }
+            ]
+          }
+        },
+        {
           "name": "positionAuthority",
           "pda": {
             "seeds": [
@@ -163,10 +194,74 @@ export type Rung = {
         {
           "name": "makerQuoteAccount",
           "docs": [
-            "Premium lands here directly. The protocol never takes custody of it, so there is no",
-            "path by which a matched maker fails to be paid."
+            "The premium lands here directly. The protocol never takes custody of it, so there is",
+            "no path by which a matched maker fails to be paid."
           ],
           "writable": true
+        },
+        {
+          "name": "feeTreasuryAccount",
+          "docs": [
+            "The protocol's cut of the premium. Created on demand so a treasury that has never",
+            "held the quote mint cannot make matching fail."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "feeTreasury"
+              },
+              {
+                "kind": "account",
+                "path": "quoteTokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "quoteMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "feeTreasury"
         },
         {
           "name": "stockVault",
@@ -230,11 +325,23 @@ export type Rung = {
         },
         {
           "name": "quoteTokenProgram"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
           "name": "stockRawToSend",
+          "type": "u64"
+        },
+        {
+          "name": "fillStrikeQuote",
           "type": "u64"
         }
       ]
@@ -780,19 +887,19 @@ export type Rung = {
       ]
     },
     {
-      "name": "exercisePosition",
+      "name": "exerciseFill",
       "docs": [
-        "Taker swaps the escrowed stock for the escrowed USDC. Only they may call it."
+        "Taker swaps their fill's escrowed stock for its escrowed USDC. Only they may call it."
       ],
       "discriminator": [
-        30,
-        130,
-        157,
-        17,
-        128,
-        178,
-        116,
-        10
+        52,
+        73,
+        27,
+        43,
+        249,
+        34,
+        138,
+        3
       ],
       "accounts": [
         {
@@ -800,7 +907,7 @@ export type Rung = {
           "writable": true,
           "signer": true,
           "relations": [
-            "position"
+            "fill"
           ]
         },
         {
@@ -830,6 +937,39 @@ export type Rung = {
                 "kind": "account",
                 "path": "position.nonce",
                 "account": "position"
+              }
+            ]
+          },
+          "relations": [
+            "fill"
+          ]
+        },
+        {
+          "name": "fill",
+          "docs": [
+            "Closed once settled: the claim is spent, and its rent goes back to the taker who",
+            "paid it at match."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  105,
+                  108,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "position"
+              },
+              {
+                "kind": "account",
+                "path": "fill.index",
+                "account": "fill"
               }
             ]
           }
@@ -1080,19 +1220,19 @@ export type Rung = {
       "args": []
     },
     {
-      "name": "expirePosition",
+      "name": "expireFill",
       "docs": [
-        "Return both collaterals after expiry. Permissionless."
+        "Return both collaterals for one fill after expiry. Permissionless."
       ],
       "discriminator": [
-        146,
-        203,
-        82,
-        231,
-        253,
-        127,
-        123,
-        214
+        84,
+        213,
+        233,
+        58,
+        211,
+        66,
+        197,
+        101
       ],
       "accounts": [
         {
@@ -1132,13 +1272,51 @@ export type Rung = {
                 "account": "position"
               }
             ]
+          },
+          "relations": [
+            "fill"
+          ]
+        },
+        {
+          "name": "fill",
+          "docs": [
+            "Closed once settled. Its rent goes back to the taker who paid it at match, not to",
+            "whoever happened to crank the expiry."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  105,
+                  108,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "position"
+              },
+              {
+                "kind": "account",
+                "path": "fill.index",
+                "account": "fill"
+              }
+            ]
           }
         },
         {
-          "name": "maker"
+          "name": "maker",
+          "writable": true
         },
         {
-          "name": "taker"
+          "name": "taker",
+          "writable": true,
+          "relations": [
+            "fill"
+          ]
         },
         {
           "name": "positionAuthority",
@@ -1482,6 +1660,59 @@ export type Rung = {
       "args": []
     },
     {
+      "name": "setFee",
+      "docs": [
+        "Set the protocol's cut of the premium, in basis points, and where it is paid."
+      ],
+      "discriminator": [
+        18,
+        154,
+        24,
+        18,
+        237,
+        214,
+        19,
+        80
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "feeTreasury"
+        }
+      ],
+      "args": [
+        {
+          "name": "feeBps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
       "name": "setMarketEnabled",
       "discriminator": [
         206,
@@ -1556,6 +1787,56 @@ export type Rung = {
       ]
     },
     {
+      "name": "setMinFill",
+      "docs": [
+        "Set the smallest fill, and the smallest remainder a fill may leave behind."
+      ],
+      "discriminator": [
+        148,
+        229,
+        43,
+        33,
+        106,
+        190,
+        44,
+        180
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "minFillQuote",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "setPaused",
       "discriminator": [
         91,
@@ -1604,6 +1885,19 @@ export type Rung = {
     }
   ],
   "accounts": [
+    {
+      "name": "fill",
+      "discriminator": [
+        246,
+        116,
+        142,
+        122,
+        204,
+        199,
+        44,
+        113
+      ]
+    },
     {
       "name": "globalConfig",
       "discriminator": [
@@ -1806,6 +2100,31 @@ export type Rung = {
       "code": 6018,
       "name": "selfMatch",
       "msg": "A maker cannot take the other side of their own commitment"
+    },
+    {
+      "code": 6019,
+      "name": "fillTooSmall",
+      "msg": "Fill is below the minimum and does not take the whole remainder"
+    },
+    {
+      "code": 6020,
+      "name": "fillRemainderTooSmall",
+      "msg": "Fill would leave an open remainder below the minimum"
+    },
+    {
+      "code": 6021,
+      "name": "fillExceedsOpen",
+      "msg": "Fill is larger than the commitment's open amount"
+    },
+    {
+      "code": 6022,
+      "name": "nothingOpen",
+      "msg": "Commitment has no open amount left to take or withdraw"
+    },
+    {
+      "code": 6023,
+      "name": "feeTooHigh",
+      "msg": "Fee exceeds the maximum basis points"
     }
   ],
   "types": [
@@ -1879,12 +2198,24 @@ export type Rung = {
             "type": "pubkey"
           },
           {
+            "name": "fill",
+            "type": "pubkey"
+          },
+          {
             "name": "maker",
             "type": "pubkey"
           },
           {
             "name": "taker",
             "type": "pubkey"
+          },
+          {
+            "name": "fillIndex",
+            "type": "u32"
+          },
+          {
+            "name": "strikeQuoteAmount",
+            "type": "u64"
           },
           {
             "name": "stockRawSent",
@@ -1902,8 +2233,114 @@ export type Rung = {
             "type": "u64"
           },
           {
+            "name": "feePaid",
+            "type": "u64"
+          },
+          {
+            "name": "strikeQuoteOpen",
+            "docs": [
+              "What is left open on the commitment after this fill."
+            ],
+            "type": "u64"
+          },
+          {
             "name": "matchedAt",
             "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "fill",
+      "docs": [
+        "One taker's claim on part of a commitment."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "position",
+            "type": "pubkey"
+          },
+          {
+            "name": "taker",
+            "type": "pubkey"
+          },
+          {
+            "name": "index",
+            "docs": [
+              "Index within the position, from `Position.fills_created`."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "strikeQuoteAmount",
+            "docs": [
+              "This fill's claim on the quote vault if it is exercised."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "stockRawRequired",
+            "docs": [
+              "Stock this fill had to deliver, before the mint's transfer fee."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "stockRawEscrowed",
+            "docs": [
+              "Stock the vault actually received for it. This is what settlement pays out."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "premiumPaid",
+            "docs": [
+              "Premium the taker paid, before the protocol fee was taken out of it."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "feePaid",
+            "type": "u64"
+          },
+          {
+            "name": "matchedAt",
+            "type": "i64"
+          },
+          {
+            "name": "settledAt",
+            "type": "i64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "fillStatus"
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "fillStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "matched"
+          },
+          {
+            "name": "exercised"
+          },
+          {
+            "name": "expired"
           }
         ]
       }
@@ -1932,13 +2369,35 @@ export type Rung = {
             "name": "paused",
             "docs": [
               "Halts new commitments and new matches. Deliberately does NOT halt settlement —",
-              "see `exercise_position` for why pausing must never strand escrowed collateral."
+              "see `exercise_fill` for why pausing must never strand escrowed collateral."
             ],
             "type": "bool"
           },
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "feeBps",
+            "docs": [
+              "Protocol cut of the premium at match, in basis points, capped at `MAX_FEE_BPS`."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "feeTreasury",
+            "docs": [
+              "Owner of the token account the fee is paid into."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "minFillQuote",
+            "docs": [
+              "Smallest fill, in raw quote units, except when a fill takes the whole remainder.",
+              "Also the smallest remainder a fill may leave behind. Zero disables both checks."
+            ],
+            "type": "u64"
           }
         ]
       }
@@ -2003,18 +2462,17 @@ export type Rung = {
     },
     {
       "name": "position",
+      "docs": [
+        "A maker's offer of capital at a valuation, and the owner of both vaults.",
+        "",
+        "The terms are fixed at creation. Takers claim slices of it through `Fill` accounts, each",
+        "inheriting these terms pro rata; see docs/fills.md."
+      ],
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "maker",
-            "type": "pubkey"
-          },
-          {
-            "name": "taker",
-            "docs": [
-              "`Pubkey::default()` until matched."
-            ],
             "type": "pubkey"
           },
           {
@@ -2043,7 +2501,7 @@ export type Rung = {
           {
             "name": "stockRawRequired",
             "docs": [
-              "Minimum raw stock the vault must hold for a match to be valid.",
+              "Stock the vault must hold for the commitment to be taken in full.",
               "",
               "Raw base units, never UI amounts: a ScaledUiAmount multiplier change rescales what a",
               "UI amount means, while the raw figure stays a fixed claim on the vault."
@@ -2053,7 +2511,8 @@ export type Rung = {
           {
             "name": "stockRawEscrowed",
             "docs": [
-              "Raw stock the vault actually received. This is what settlement pays out.",
+              "Raw stock the vault actually holds across every open fill. This is what settlement",
+              "pays out.",
               "",
               "It is measured rather than assumed because the Token-2022 transfer fee makes the",
               "amount that arrives strictly smaller than the amount sent, by a rate that can change",
@@ -2067,6 +2526,17 @@ export type Rung = {
           },
           {
             "name": "strikeQuoteEscrowed",
+            "docs": [
+              "Quote measured into the vault at creation. Every fill is sized against this, so a",
+              "claim is always denominated in money that is actually there."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "strikeQuoteOpen",
+            "docs": [
+              "The part of `strike_quote_escrowed` no taker has claimed yet."
+            ],
             "type": "u64"
           },
           {
@@ -2082,7 +2552,7 @@ export type Rung = {
             "type": "i64"
           },
           {
-            "name": "matchedAt",
+            "name": "firstMatchedAt",
             "docs": [
               "Zero until the corresponding transition occurs."
             ],
@@ -2102,6 +2572,21 @@ export type Rung = {
               "indexer's private notion of what each position meant."
             ],
             "type": "u64"
+          },
+          {
+            "name": "fillsCreated",
+            "docs": [
+              "Monotonic, and the fill PDAs' index. Never decremented, so a closed fill's address is",
+              "never reused."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "fillsOpen",
+            "docs": [
+              "Fills that have not settled yet."
+            ],
+            "type": "u32"
           },
           {
             "name": "status",
@@ -2129,6 +2614,10 @@ export type Rung = {
         "fields": [
           {
             "name": "position",
+            "type": "pubkey"
+          },
+          {
+            "name": "fill",
             "type": "pubkey"
           },
           {
@@ -2164,6 +2653,10 @@ export type Rung = {
             "type": "pubkey"
           },
           {
+            "name": "fill",
+            "type": "pubkey"
+          },
+          {
             "name": "maker",
             "type": "pubkey"
           },
@@ -2195,13 +2688,13 @@ export type Rung = {
             "name": "open"
           },
           {
+            "name": "partiallyMatched"
+          },
+          {
             "name": "matched"
           },
           {
-            "name": "exercised"
-          },
-          {
-            "name": "expired"
+            "name": "settled"
           },
           {
             "name": "cancelled"
@@ -2217,9 +2710,26 @@ export type Rung = {
       "value": "[99, 111, 110, 102, 105, 103]"
     },
     {
+      "name": "fillSeed",
+      "type": "bytes",
+      "value": "[102, 105, 108, 108]"
+    },
+    {
       "name": "marketSeed",
       "type": "bytes",
       "value": "[109, 97, 114, 107, 101, 116]"
+    },
+    {
+      "name": "maxFeeBps",
+      "docs": [
+        "Ceiling on the protocol fee, in basis points of the premium.",
+        "",
+        "The admin sets the fee, so the cap is what stops a compromised admin key from taking a",
+        "maker's entire income at the moment of a match. It binds the fee alone: collateral is",
+        "never a fee's source, whatever this is set to."
+      ],
+      "type": "u16",
+      "value": "500"
     },
     {
       "name": "maxStrikeWholeUnits",
