@@ -1,57 +1,95 @@
 /*
- * Rung design tokens — light infrastructure product (Stripe / Linear / Mercury).
+ * Rung design tokens: night market over paper.
  *
- * High-contrast near-black on off-white. Monochrome base; amber is the sole accent
- * (primary CTAs + peak curve capital). Teal reserved for protection / matched state.
+ * Harbour-navy chrome (header, hero, footer) where committed capital glows amber and
+ * protection glows teal, framing a cool paper workspace where the product itself lives.
+ * Amber still means one thing (capital committed) and teal another (protection); neither is
+ * ever used to mean "up" or "down".
  */
 
-:root {
-  /* Surfaces */
-  --ink: #0a0a0a;
-  --paper: #fafafa;
+/* Light workspace colours. The hero's product card re-declares them so it stays a light
+   object floating on the dark hero. */
+:root,
+.hero-shell .device-frame {
+  --ink: #0c1524;
+  --paper: #f2f4f8;
   --surface: #ffffff;
   --surface-elevated: #ffffff;
-  --surface-muted: #f4f4f5;
-  --line: #e4e4e7;
-  --line-soft: #f0f0f2;
-  --line-strong: #d4d4d8;
+  --surface-muted: #eef1f6;
+  --line: #e1e6ee;
+  --line-soft: #edf0f5;
+  --line-strong: #cbd3df;
+  --chalk: #f2f4f8;
 
-  /* Glyph on dark chrome (rare: inverted panels only) */
-  --chalk: #fafafa;
+  --text: #0c1524;
+  --text-muted: #3d4a5e;
+  --text-faint: #637086;
 
-  /* Text — high contrast, no muddy gray-on-gray */
-  --text: #0a0a0a;
-  --text-muted: #3f3f46;
-  --text-faint: #71717a;
+  /* Amber: committed capital. Fill for shapes; ink (5:1 on white) for text. */
+  --amber-fill: #d68a34;
+  --amber-ink: #955a15;
+  --amber-wash: #fdf3e6;
+  --amber-soft: #f1d3a6;
+  --amber-glow: rgba(214, 138, 52, 0.14);
+  --amber-glow-ring: rgba(214, 138, 52, 0.24);
 
-  /* Amber / copper — sole brand accent */
-  --amber-fill: #c47a2c;
-  --amber-ink: #9a5f1f;
-  --amber-wash: #fff7ed;
-  --amber-soft: #f0d9b5;
-  --amber-glow: rgba(196, 122, 44, 0.14);
-  --amber-glow-ring: rgba(196, 122, 44, 0.22);
-
-  /* Teal — protection / matched (secondary semantic, not brand) */
-  --teal-fill: #0d9488;
-  --teal-ink: #0f766e;
-  --teal-wash: #f0fdfa;
+  /* Teal: protection and matched positions. */
+  --teal-fill: #14968e;
+  --teal-ink: #0e6f69;
+  --teal-wash: #e8f6f4;
 
   --caution: #b45309;
   --danger: #dc2626;
   --danger-wash: #fef2f2;
 
-  /* Elevation — soft, Mercury-calm */
-  --shadow-xs: 0 1px 2px rgba(10, 10, 10, 0.04);
-  --shadow-soft: 0 1px 2px rgba(10, 10, 10, 0.04), 0 4px 16px rgba(10, 10, 10, 0.04);
-  --shadow-lift: 0 8px 30px rgba(10, 10, 10, 0.08), 0 2px 8px rgba(10, 10, 10, 0.04);
-  --shadow-device: 0 24px 64px rgba(10, 10, 10, 0.12), 0 8px 24px rgba(10, 10, 10, 0.06);
-  --glow-amber: 0 0 40px rgba(196, 122, 44, 0.12);
+  color: var(--text);
+}
 
-  /* Typography — geometric sans (Inter / Geist-like stack) */
-  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --font-display: var(--font-sans);
-  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+/* Dark chrome. Everything inside reads these, so the header, hero and footer need no
+   colours of their own. */
+.site-header,
+.hero-shell,
+.site-footer,
+.on-dark {
+  --paper: #0b1424;
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-elevated: #14233a;
+  --surface-muted: rgba(255, 255, 255, 0.1);
+  --line: rgba(255, 255, 255, 0.12);
+  --line-soft: rgba(255, 255, 255, 0.07);
+  --line-strong: rgba(255, 255, 255, 0.24);
+  --chalk: #0c1524;
+
+  --text: #f2f4f8;
+  --text-muted: #c3ccda;
+  --text-faint: #8e9aae;
+
+  --amber-ink: #f2b35c;
+  --amber-wash: rgba(242, 179, 92, 0.12);
+  --teal-ink: #6dd3c8;
+  --teal-wash: rgba(109, 211, 200, 0.1);
+
+  color: var(--text);
+}
+
+:root {
+  /* Constant across both grounds. */
+  --night: #0b1424;
+  --harbour: #14233a;
+  --gold: #f2b35c;
+  --sea-glass: #6dd3c8;
+  /* Text on an amber or gold fill: 6.7:1 on the darkest amber. */
+  --on-accent: #1a1206;
+
+  --shadow-xs: 0 1px 2px rgba(12, 21, 36, 0.05);
+  --shadow-soft: 0 1px 2px rgba(12, 21, 36, 0.04), 0 6px 20px -8px rgba(12, 21, 36, 0.1);
+  --shadow-lift: 0 18px 40px -16px rgba(12, 21, 36, 0.24), 0 2px 8px rgba(12, 21, 36, 0.05);
+  --shadow-device: 0 40px 90px -24px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --glow-amber: 0 0 60px -12px rgba(242, 179, 92, 0.35);
+
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-display: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
   --radius-sm: 8px;
   --radius: 12px;
@@ -62,7 +100,7 @@
   --ease-soft: cubic-bezier(0.33, 1, 0.68, 1);
   --dur-fast: 150ms;
   --dur: 240ms;
-  --dur-slow: 400ms;
+  --dur-slow: 480ms;
 
   --header-h: 64px;
   --wrap: 1120px;

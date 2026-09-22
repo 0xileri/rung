@@ -131,7 +131,7 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
               <div className="label">{asset.name}</div>
             )}
           </div>
-          <h1 style={{ fontSize: 44 }}>Where would you own it?</h1>
+          <h1 style={{ fontSize: 'clamp(40px, 6vw, 56px)' }}>Where would you own it?</h1>
         </div>
         <div style={{ flexGrow: 1 }} />
         <dl style={{ display: 'flex', gap: 34, margin: 0, flexWrap: 'wrap' }}>

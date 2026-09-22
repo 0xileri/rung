@@ -6,6 +6,12 @@
       "runtimeExecutable": "wsl.exe",
       "runtimeArgs": ["-d", "Ubuntu", "--", "bash", "/mnt/c/Users/HP/stocklana build/scripts/wsl/dev.sh"],
       "port": 3000
+    },
+    {
+      "name": "rung-web-windows",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["node_modules/next/dist/bin/next", "dev", "apps/web", "-p", "3001"],
+      "port": 3001
     }
   ]
 }

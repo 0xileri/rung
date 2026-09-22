@@ -46,14 +46,18 @@ export function HeroShowcase({ data }: { data: HeroData }) {
         </span>
         <span
           style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
             fontSize: 11,
             fontWeight: 500,
             color: 'var(--amber-ink)',
             background: 'var(--amber-wash)',
             borderRadius: 999,
-            padding: '2px 8px',
+            padding: '2px 9px 2px 7px',
           }}
         >
+          <span className="live-dot" aria-hidden />
           Live · {cluster}
         </span>
       </div>
@@ -116,11 +120,13 @@ export function HeroShowcase({ data }: { data: HeroData }) {
                     >
                       {r.committedUsd > 0 && (
                         <div
-                          className="curve-bar"
+                          className={peak ? 'curve-bar is-peak' : 'curve-bar'}
                           style={{
                             width: `${Math.max(4, (r.committedUsd / max) * 100)}%`,
                             height: '100%',
-                            background: peak ? 'var(--amber-fill)' : 'var(--amber-soft)',
+                            background: peak
+                              ? 'linear-gradient(90deg, var(--amber-fill), var(--gold))'
+                              : 'var(--amber-soft)',
                             borderRadius: 4,
                             animationDelay: `${i * 50}ms`,
                           }}

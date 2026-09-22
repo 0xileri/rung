@@ -130,17 +130,17 @@ export default async function Home() {
               <h1
                 className="enter enter-delay-1"
                 style={{
-                  fontSize: 'clamp(40px, 5.5vw, 64px)',
-                  fontWeight: 650,
-                  letterSpacing: '-0.04em',
-                  lineHeight: 1.05,
-                  marginBottom: 20,
-                  maxWidth: 560,
+                  fontSize: 'clamp(48px, 6.4vw, 82px)',
+                  lineHeight: 0.98,
+                  marginBottom: 24,
+                  maxWidth: 600,
                 }}
               >
                 Name your valuation.
                 <br />
-                Put capital behind it.
+                <span className="gold-text">
+                  Put capital <span style={{ whiteSpace: 'nowrap' }}>behind it.</span>
+                </span>
               </h1>
               <p
                 className="enter enter-delay-2"
@@ -214,6 +214,38 @@ export default async function Home() {
             </div>
           </div>
         </div>
+
+        {assets.length > 0 && (
+          <div className="ticker" aria-label="PreStocks valuations">
+            <div className="ticker-track">
+              {[false, true].map((duplicate) => (
+                // The track holds two identical groups so the scroll can loop without a seam.
+                <div key={String(duplicate)} className="ticker-group" aria-hidden={duplicate || undefined}>
+                  {assets.map((a) => {
+                    const delta = relativeTo(a.impliedValuation, a.markValuation);
+                    return (
+                      <Link
+                        key={a.symbol}
+                        href={`/asset/${a.symbol}`}
+                        className="ticker-item"
+                        tabIndex={duplicate ? -1 : undefined}
+                      >
+                        <strong>{a.name.replace(/ PreStocks$/i, '')}</strong>
+                        <span className="fig">{valuation(a.impliedValuation)}</span>
+                        <span
+                          className="fig"
+                          style={{ color: delta >= 0 ? 'var(--amber-ink)' : 'var(--teal-ink)' }}
+                        >
+                          {pct(delta, 1)} vs mark
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       <ActivityBand activity={activity} cluster={CLUSTER} />
@@ -231,9 +263,7 @@ export default async function Home() {
             flexWrap: 'wrap',
           }}
         >
-          <h2 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.03em' }}>
-            PreStocks markets
-          </h2>
+          <h2 style={{ fontSize: 36 }}>PreStocks markets</h2>
           {stale && (
             <span className="callout callout-caution" style={{ padding: '6px 12px', fontSize: 12 }}>
               Cached — upstream busy
@@ -327,6 +357,14 @@ export default async function Home() {
                       </dd>
                     </div>
                   </dl>
+                  {/* Where the market trades against the mark: right of centre in amber when
+                      above it, left in teal when below; a full half-track is 30% or more. */}
+                  <div className="mark-meter" aria-hidden>
+                    <span
+                      className={delta >= 0 ? 'mark-meter-bar is-above' : 'mark-meter-bar is-below'}
+                      style={{ width: `${Math.min(Math.abs(delta) / 0.3, 1) * 50}%` }}
+                    />
+                  </div>
                 </Link>
               );
             })}
@@ -339,15 +377,7 @@ export default async function Home() {
       </section>
 
       <section className="wrap" style={{ paddingBottom: 96 }}>
-        <h2
-          style={{
-            fontSize: 28,
-            fontWeight: 600,
-            letterSpacing: '-0.03em',
-            marginBottom: 8,
-            maxWidth: 520,
-          }}
-        >
+        <h2 style={{ fontSize: 40, marginBottom: 10, maxWidth: 560 }}>
           Infrastructure for honest private valuations
         </h2>
         <p
@@ -363,20 +393,36 @@ export default async function Home() {
           in the settlement path.
         </p>
         <div className="bento">
-          <div className="card bento-wide" style={{ padding: '28px 28px 24px' }}>
-            <div className="label" style={{ marginBottom: 10, color: 'var(--amber-ink)' }}>
-              Commitment Curve
+          <div
+            className="card tint-amber bento-wide"
+            style={{ padding: '28px 28px 24px', display: 'flex', gap: 28, flexWrap: 'wrap', alignItems: 'center' }}
+          >
+            <div style={{ flex: '1 1 280px' }}>
+              <div className="label" style={{ marginBottom: 10, color: 'var(--amber-ink)' }}>
+                Commitment Curve
+              </div>
+              <h3 style={{ fontSize: 22, fontWeight: 600, marginBottom: 10, letterSpacing: '-0.02em' }}>
+                Capital that actually shows up
+              </h3>
+              <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0, lineHeight: 1.55, maxWidth: 420 }}>
+                Horizontal bars of USDC locked at each valuation band. Peak bands use amber;
+                concentration is shown inline so one wallet cannot dress up as a market.
+              </p>
             </div>
-            <h3 style={{ fontSize: 22, fontWeight: 600, marginBottom: 10, letterSpacing: '-0.02em' }}>
-              Capital that actually shows up
-            </h3>
-            <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0, lineHeight: 1.55, maxWidth: 420 }}>
-              Horizontal bars of USDC locked at each valuation band. Peak bands use amber;
-              concentration is shown inline so one wallet cannot dress up as a market.
-            </p>
+            {/* The mark, drawn as a curve: bars of capital stepping out toward the market
+                line and never reaching it, because buyers commit below where it trades. */}
+            <div className="mini-curve" aria-hidden>
+              {[34, 58, 100, 72, 40].map((w, i) => (
+                <span
+                  key={i}
+                  className={w === 100 ? 'curve-bar is-peak' : 'curve-bar'}
+                  style={{ width: `${w}%`, animationDelay: `${i * 80}ms` }}
+                />
+              ))}
+            </div>
           </div>
-          <div className="card" style={{ padding: '28px 24px' }}>
-            <div className="label" style={{ marginBottom: 10 }}>Protect</div>
+          <div className="card tint-teal" style={{ padding: '28px 24px' }}>
+            <div className="label" style={{ marginBottom: 10, color: 'var(--teal-ink)' }}>Protect</div>
             <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, letterSpacing: '-0.02em' }}>
               Sell upside, keep a floor
             </h3>
@@ -385,8 +431,8 @@ export default async function Home() {
               before expiry.
             </p>
           </div>
-          <div className="card" style={{ padding: '28px 24px' }}>
-            <div className="label" style={{ marginBottom: 10 }}>Settlement</div>
+          <div className="card on-dark" style={{ padding: '28px 24px' }}>
+            <div className="label" style={{ marginBottom: 10, color: 'var(--amber-ink)' }}>Settlement</div>
             <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, letterSpacing: '-0.02em' }}>
               No oracle required
             </h3>
@@ -395,7 +441,7 @@ export default async function Home() {
               a feed whether it is rational.
             </p>
           </div>
-          <div className="card" style={{ padding: '28px 24px' }}>
+          <div className="card bento-wide" style={{ padding: '28px 24px' }}>
             <div className="label" style={{ marginBottom: 10 }}>Custody</div>
             <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, letterSpacing: '-0.02em' }}>
               Vaults, stated plainly

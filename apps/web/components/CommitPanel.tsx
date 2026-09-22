@@ -207,7 +207,7 @@ export function CommitPanel({
       <section
         className="panel" style={{ padding: '24px 26px' }}
       >
-        <h2 className="label" style={{ color: 'var(--amber-fill)', marginBottom: 12 }}>
+        <h2 className="label" style={{ color: 'var(--amber-ink)', marginBottom: 12 }}>
           Commitment open
         </h2>
         <p style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--text-muted)', margin: '0 0 16px' }}>
@@ -217,7 +217,7 @@ export function CommitPanel({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
           <a
             className="fig"
-            style={{ fontSize: 12, color: 'var(--amber-fill)' }}
+            style={{ fontSize: 12, color: 'var(--amber-ink)' }}
             href={explorer('tx', phase.signature, CLUSTER)}
             target="_blank"
             rel="noreferrer"
@@ -226,7 +226,7 @@ export function CommitPanel({
           </a>
           <a
             className="fig"
-            style={{ fontSize: 12, color: 'var(--amber-fill)' }}
+            style={{ fontSize: 12, color: 'var(--amber-ink)' }}
             href={explorer('address', phase.position, CLUSTER)}
             target="_blank"
             rel="noreferrer"
@@ -325,8 +325,9 @@ export function CommitPanel({
                   cursor: 'pointer',
                   borderRadius: 'var(--radius-sm)',
                   border: `1px solid ${expiryDays === e.days ? 'var(--amber-fill)' : 'var(--line)'}`,
-                  background: expiryDays === e.days ? 'rgba(201,138,60,0.14)' : 'transparent',
-                  color: expiryDays === e.days ? 'var(--amber-fill)' : 'var(--text-muted)',
+                  background: expiryDays === e.days ? 'var(--amber-wash)' : 'transparent',
+                  // Amber fill is 2.8:1 on this wash; the ink value is the one legible as text.
+                  color: expiryDays === e.days ? 'var(--amber-ink)' : 'var(--text-muted)',
                 }}
               >
                 {e.label}

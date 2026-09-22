@@ -52,7 +52,7 @@ export function TryBothSides({ symbol }: { symbol: string }) {
       >
         {steps.map((s, i) => (
           <li key={s.title} className="card" style={{ padding: '16px 18px' }}>
-            <div className="fig" style={{ fontSize: 11, color: 'var(--amber-ink)', marginBottom: 6 }}>
+            <div className="step-badge" style={{ marginBottom: 12 }}>
               {i + 1}
             </div>
             <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>{s.title}</div>

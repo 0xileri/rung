@@ -76,7 +76,7 @@ export default async function ProtectPage({ params }: { params: Promise<{ symbol
             <div className="label">Protect {asset.symbol}</div>
           )}
         </div>
-        <h1 style={{ fontSize: 42, marginBottom: 14 }}>Sell the upside, keep a floor</h1>
+        <h1 style={{ fontSize: 'clamp(40px, 6vw, 56px)', marginBottom: 14 }}>Sell the upside, keep a floor</h1>
         <p style={{ fontSize: 16, lineHeight: 1.55, color: 'var(--text-muted)', maxWidth: 640, margin: 0 }}>
           You already hold {name}. Someone has locked USDC at a valuation they would buy at. Take
           their side of it: lock your tokens, collect a premium, and gain the right to exchange

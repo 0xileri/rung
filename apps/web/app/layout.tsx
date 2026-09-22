@@ -66,6 +66,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
           <footer className="site-footer">
             <div className="wrap" style={{ fontSize: 13, color: 'var(--text-faint)', lineHeight: 1.65 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+                <Mark size={26} />
+                <Wordmark size={20} />
+              </div>
               <p style={{ margin: '0 0 10px', maxWidth: 720 }}>
                 Experimental software, unaudited. PreStocks provide economic exposure to
                 private-company-linked assets and may be restricted in some jurisdictions. Rung is

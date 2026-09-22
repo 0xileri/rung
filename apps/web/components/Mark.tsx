@@ -19,11 +19,11 @@ export function Wordmark({ size = 20, reversed = false }: { size?: number; rever
   return (
     <span
       style={{
-        fontFamily: 'var(--font-sans)',
-        fontSize: size,
-        fontWeight: 600,
+        fontFamily: 'var(--font-display)',
+        fontSize: size * 1.3,
+        fontWeight: 400,
         lineHeight: 1,
-        letterSpacing: '-0.03em',
+        letterSpacing: '-0.005em',
         color: reversed ? 'var(--chalk)' : 'var(--text)',
       }}
     >

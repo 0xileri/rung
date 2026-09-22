@@ -82,11 +82,13 @@ export function CommitmentCurve({
                 }}
               >
                 <div
-                  className="curve-bar"
+                  className={isPeak ? 'curve-bar is-peak' : 'curve-bar'}
                   style={{
                     width: `${width}%`,
                     height: '100%',
-                    background: isPeak ? 'var(--amber-fill)' : 'var(--amber-soft)',
+                    background: isPeak
+                      ? 'linear-gradient(90deg, var(--amber-fill), var(--gold))'
+                      : 'var(--amber-soft)',
                     borderRadius: 5,
                     transition: 'width 320ms var(--ease-out)',
                     animationDelay: `${Math.min(i, 12) * 45}ms`,

@@ -13,7 +13,7 @@ export const metadata = { title: 'Limitations — Rung' };
 
 const section = (title: string, body: React.ReactNode, id?: string) => (
   <section id={id} style={{ marginBottom: 34, scrollMarginTop: 80 }}>
-    <h2 style={{ fontSize: 24, marginBottom: 10 }}>{title}</h2>
+    <h2 style={{ fontSize: 30, marginBottom: 10 }}>{title}</h2>
     <div style={{ fontSize: 15, lineHeight: 1.6, color: 'var(--text-muted)' }}>{body}</div>
   </section>
 );
@@ -21,7 +21,7 @@ const section = (title: string, body: React.ReactNode, id?: string) => (
 export default function Limitations() {
   return (
     <div className="wrap enter" style={{ paddingTop: 48, paddingBottom: 56, maxWidth: 760 }}>
-      <h1 style={{ fontSize: 44, marginBottom: 12 }}>Known limitations</h1>
+      <h1 style={{ fontSize: 'clamp(40px, 6vw, 56px)', marginBottom: 12 }}>Known limitations</h1>
       <p style={{ fontSize: 16, color: 'var(--text-faint)', marginTop: 0, marginBottom: 40 }}>
         Written plainly, because several of these qualify claims you would otherwise take at
         face value.

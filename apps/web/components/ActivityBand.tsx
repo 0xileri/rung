@@ -22,7 +22,7 @@ export type Activity = {
 
 export function ActivityBand({ activity, cluster }: { activity: Activity | null; cluster: string }) {
   return (
-    <section className="wrap" style={{ paddingTop: 8, paddingBottom: 56 }}>
+    <section className="wrap" style={{ paddingTop: 36, paddingBottom: 56 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
         <h2 className="label" style={{ margin: 0 }}>
           On chain now
@@ -50,28 +50,28 @@ export function ActivityBand({ activity, cluster }: { activity: Activity | null;
           }}
         >
           <Stat
+            tint="amber"
             label="Capital committed"
             value={usd(activity.committedUsd, 0)}
             note={`${activity.openCount} open commitment${activity.openCount === 1 ? '' : 's'}`}
           />
           <Stat
+            tint="teal"
             label="Positions matched"
             value={String(activity.matchedCount)}
             note={`${activity.liveCount} live, ${activity.matchedCount - activity.liveCount} settled`}
           />
           <Stat
+            tint="amber"
             label="Premiums paid to makers"
             value={usd(activity.premiumsUsd)}
             note="on every matched position"
           />
           <Stat
             label="Makers vs holders, net P&L"
-            value={
-              activity.makers.empty
-                ? '—'
-                : `${signedUsd(activity.makers.usd)} / ${signedUsd(-activity.makers.usd)}`
-            }
+            value={activity.makers.empty ? '—' : `Makers ${signedUsd(activity.makers.usd)}`}
             valueColor={activity.makers.empty ? undefined : pnlColor(activity.makers.usd)}
+            secondary={activity.makers.empty ? undefined : `Holders ${signedUsd(-activity.makers.usd)}`}
             note={
               activity.makers.unpriced > 0
                 ? `${activity.makers.unpriced} position(s) without a live price`
@@ -87,13 +87,33 @@ export function ActivityBand({ activity, cluster }: { activity: Activity | null;
   );
 }
 
-function Stat({ label, value, note, valueColor }: { label: string; value: string; note: string; valueColor?: string }) {
+function Stat({
+  label,
+  value,
+  note,
+  valueColor,
+  secondary,
+  tint,
+}: {
+  label: string;
+  value: string;
+  note: string;
+  valueColor?: string;
+  /** A second figure on its own line, so a pair of values never wraps mid-number. */
+  secondary?: string;
+  tint?: 'amber' | 'teal';
+}) {
   return (
-    <div className="card" style={{ padding: '16px 18px' }}>
+    <div className={tint ? `card tint-${tint}` : 'card'} style={{ padding: '16px 18px' }}>
       <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 6 }}>{label}</div>
-      <div className="fig" style={{ fontSize: 22, fontWeight: 500, color: valueColor }}>
+      <div className="fig" style={{ fontSize: secondary ? 18 : 22, fontWeight: 500, color: valueColor }}>
         {value}
       </div>
+      {secondary && (
+        <div className="fig" style={{ fontSize: 18, fontWeight: 500, color: 'var(--text-muted)' }}>
+          {secondary}
+        </div>
+      )}
       <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 4 }}>{note}</div>
     </div>
   );
