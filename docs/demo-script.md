@@ -29,6 +29,13 @@ Do not click **Exercise now** on camera. At today's price a $1.0T floor on OpenA
 the money: exercising would hand over tokens worth more than the $100 it pays, and the P&L
 would show that loss.
 
+## Retakes
+
+A commitment wallet B has already taken leaves Protect, so a full retake starts clean. If
+a take stopped after wallet A committed but before B took it, clear it first: in wallet
+A's **My Positions**, click **Cancel & withdraw** on that $100.00 floor. Otherwise the next
+take leaves two identical $100.00 / $4.60 floors on Protect.
+
 ## If something goes wrong live
 
 - **The new commitment isn't on the curve after reloading**: the server reuses a chain read
