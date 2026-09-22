@@ -207,9 +207,9 @@ real PreStocks API throughout**.
 
 ### Mainnet readiness
 
-Rung runs on devnet for judging, where anyone can try both sides for free. Mainnet is one
-command away and has been rehearsed, but it is deliberately not live: the code is unaudited,
-and trying it there would need real PreStocks and USDC.
+Rung runs on devnet for judging, where anyone can try both sides for free. Mainnet has been
+rehearsed, but it is deliberately not live: the code is unaudited, and trying it there would
+need real PreStocks and USDC.
 
 What has been verified against mainnet itself:
 
