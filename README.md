@@ -30,6 +30,34 @@ stepping out from the line where the asset currently trades.
 
 ---
 
+## For judges: two minutes
+
+**Live on devnet:** https://rung.up.railway.app
+
+1. **Look.** The landing page's Commitment Curve and *On chain now* figures are read live
+   from Position accounts, including a live matched position and both sides' P&L.
+2. **Get tokens.** Switch Phantom to devnet, connect, and press **Get test tokens** for devnet
+   SOL, mock USDC and mock OPENAI.
+3. **Try both sides.** Commit at a valuation on OpenAI; from a second wallet, take the other
+   side on Protect. My Positions shows each side's dates, collateral and P&L, and lets the
+   holder exercise.
+
+Worth checking:
+
+- **No oracle in settlement.** Exercise is the holder's contractual right; expiry is
+  permissionless, so no admin switch or absent counterparty can trap collateral.
+- **The real mints, handled honestly.** The 48.6% multiplier trap, the epoch-scheduled
+  transfer fee, and the issuer's powers (permanent delegate, freeze, pause, transfer hook)
+  are dealt with in code and disclosed on screen, not ignored.
+- **Tested against the real thing.** 24 program tests, 26 checks against the real OpenAI and
+  SpaceX mints on a mainnet fork, and 12 against the live devnet deployment.
+- **Guardrails on chain.** A $1,000 cap per position, a transfer-hook guard, and no
+  self-matching, all enforced by the program.
+
+A 90-second walkthrough is in [docs/demo-script.md](docs/demo-script.md).
+
+---
+
 ## What we found in the mints
 
 Rung is built on the actual OpenAI PreStock

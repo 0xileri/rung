@@ -15,6 +15,7 @@ import { CLUSTER, connection, toOpenCommitments, type PositionsResult } from '..
 import { getPositionsCached } from '../lib/positions-cache';
 import { pnlForPosition, priceBook, readMintScales, totalPnl, type MintScale } from '../lib/pnl';
 import { ActivityBand, type Activity } from '../components/ActivityBand';
+import { TryBothSides } from '../components/TryBothSides';
 import { escrowTargetFor, LISTED_SYMBOLS } from '../lib/deployment';
 
 export const dynamic = 'force-dynamic';
@@ -217,6 +218,8 @@ export default async function Home() {
       </section>
 
       <ActivityBand activity={activity} cluster={CLUSTER} />
+
+      {CLUSTER !== 'mainnet-beta' && featured && <TryBothSides symbol={LISTED_SYMBOLS[0] ?? featured.symbol} />}
 
       <section className="wrap enter enter-delay-3" style={{ paddingBottom: 88 }}>
         <div
