@@ -182,15 +182,18 @@ Enforced by the program, not just the interface:
 | Config | [`81keCkSZRierBmcXgcNBqqNTfYszRDvvgviwg4YTg8jo`](https://explorer.solana.com/address/81keCkSZRierBmcXgcNBqqNTfYszRDvvgviwg4YTg8jo?cluster=devnet) |
 | OPENAI market | [`8igHstCvuXTDbP7aJKA2CDtLhejMA18aXMmDMwd1JDtD`](https://explorer.solana.com/address/8igHstCvuXTDbP7aJKA2CDtLhejMA18aXMmDMwd1JDtD?cluster=devnet) |
 | Mock OPENAI mint | [`3Q43N1W6s77VTn2g9Tzp56p6WshVBUzRWknQeh3TVwR6`](https://explorer.solana.com/address/3Q43N1W6s77VTn2g9Tzp56p6WshVBUzRWknQeh3TVwR6?cluster=devnet) |
+| SPACEX market | [`9wCPPbEj2JarSfXhNnHmZ49iRrwP3iJo6cRtMMMyqHVC`](https://explorer.solana.com/address/9wCPPbEj2JarSfXhNnHmZ49iRrwP3iJo6cRtMMMyqHVC?cluster=devnet) |
+| Mock SPACEX mint | [`3NS9XJR5GbNo6XGQhZBVgCDtfiPY6T1DjcDjX4rrgfZD`](https://explorer.solana.com/address/3NS9XJR5GbNo6XGQhZBVgCDtfiPY6T1DjcDjX4rrgfZD?cluster=devnet) |
 | Mock USDC | [`CRUjjjByxTpUfeAhR377RTdpmravXXgSX6eTk93XxBov`](https://explorer.solana.com/address/CRUjjjByxTpUfeAhR377RTdpmravXXgSX6eTk93XxBov?cluster=devnet) |
 
-PreStocks exist only on mainnet, so the escrowed token on devnet is a **mock**. It carries
-the extensions that change the program's arithmetic: 9 decimals, a transfer fee and the
-real OpenAI PreStock's 1.4861347 scaled-amount multiplier. It is not a full replica: it
-charges 0.5% where the real mint now charges 1%, and it lacks the real mints' transfer-hook
-slot, pause switch and confidential-transfer extensions, which is why the fork test above
-exists. It is labelled as a mock on every screen it appears on, and **valuation data is live
-from the real PreStocks API throughout**.
+PreStocks exist only on mainnet, so each devnet market escrows a **mock**. Each carries the
+extensions that change the program's arithmetic: 9 decimals, a transfer fee and its real
+counterpart's scaled-amount multiplier (1.4861347 for OpenAI, 5 for SpaceX). The SpaceX mock
+was built from the live mint by `scripts/add-devnet-market.ts`, so it also has the real 1%
+fee and an empty transfer-hook slot; the older OpenAI mock charges 0.5%. Neither has the
+pause switch or confidential-transfer extensions, which is why the fork test above exists.
+Mocks are labelled on every screen they appear on, and **valuation data is live from the
+real PreStocks API throughout**.
 
 ### Mainnet readiness
 
