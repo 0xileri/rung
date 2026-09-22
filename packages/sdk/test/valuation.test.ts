@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   targetTokenPrice, impliedShareCount, isFeedConsistent,
-  quoteStrike, relativeTo, valuationBands, type PreStockAsset,
+  quoteStrike, relativeTo, valuationBands, bandAnchor, defaultTarget, type PreStockAsset,
 } from '../src/valuation.ts';
 
 /** Live PreStocks figures for OPENAI, captured 2026-09-20. */
@@ -94,4 +94,20 @@ test('valuation bands are round numbers descending from the mark', () => {
   assert.ok(bands.length > 0);
   assert.ok(bands.every((b, i) => i === 0 || b < bands[i - 1]), 'must descend');
   assert.ok(bands.every((b) => b > 0));
+});
+
+test('bands hang from the lower of mark and market, so none sits above where it trades', () => {
+  // SpaceX, 2026-09-21: the market trades 25% below the PreStocks mark.
+  const spacex = { markValuation: 2.0609e12, impliedValuation: 1.5401e12 };
+  const anchor = bandAnchor(spacex);
+  assert.equal(anchor, spacex.impliedValuation);
+  const bands = valuationBands(anchor);
+  assert.ok(bands.every((b) => b <= 1.55e12), `bands ${bands} must not float above the market`);
+  // OpenAI trades above its mark, so the mark stays the anchor.
+  assert.equal(bandAnchor(OPENAI), OPENAI.markValuation);
+});
+
+test('the default target is the band nearest 80% of the anchor', () => {
+  const bands = valuationBands(1.2337e12);
+  assert.equal(defaultTarget(bands, 1.2337e12), 1.0e12);
 });

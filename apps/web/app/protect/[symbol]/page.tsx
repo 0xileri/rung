@@ -43,7 +43,7 @@ export default async function ProtectPage({ params }: { params: Promise<{ symbol
   const disabledReason = escrow.mock
     ? undefined
     : !escrow.listed
-      ? `${asset.symbol} is not tradable on this deployment. Only ${LISTED_SYMBOLS.join(', ')} is listed here.`
+      ? `${asset.symbol} is not tradable on this deployment. Only ${LISTED_SYMBOLS.join(', ')} ${LISTED_SYMBOLS.length === 1 ? 'is' : 'are'} listed here.`
       : !mint
         ? 'The live mint could not be read just now, and its fee schedule and multiplier decide what you send. Reload in a moment.'
         : mint.transferHookProgramId

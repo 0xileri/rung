@@ -7,6 +7,8 @@ import {
   isFeedConsistent,
   targetTokenPrice,
   valuationBands,
+  bandAnchor,
+  defaultTarget,
 } from '../../../packages/sdk/src/valuation.ts';
 import type { PreStockAsset } from '../../../packages/sdk/src/valuation.ts';
 import { buildCurve } from '../../../packages/sdk/src/commitment-curve.ts';
@@ -41,7 +43,8 @@ async function loadMarkets(): Promise<{ assets: PreStockAsset[]; stale: boolean 
 async function loadHero(featured: PreStockAsset | undefined, fetched: PositionsResult): Promise<HeroData | null> {
   if (!featured) return null;
   const escrow = escrowTargetFor(featured.symbol, featured.contract_address);
-  const bands = valuationBands(featured.markValuation, 6);
+  const anchor = bandAnchor(featured);
+  const bands = valuationBands(anchor, 6);
   const curve = fetched.ok
     ? buildCurve(toOpenCommitments(fetched.positions, escrow.mint), bands).map((b) => ({
         valuationUsd: b.valuationUsd,
@@ -50,12 +53,8 @@ async function loadHero(featured: PreStockAsset | undefined, fetched: PositionsR
       }))
     : null;
 
-  // The commit panel's opening values: the band nearest 80% of the mark, $100, $4.60.
-  const target = bands.reduce(
-    (best, b) =>
-      Math.abs(b - featured.markValuation * 0.8) < Math.abs(best - featured.markValuation * 0.8) ? b : best,
-    bands[0],
-  );
+  // The commit panel's opening values: the band nearest 80% of the anchor, $100, $4.60.
+  const target = defaultTarget(bands, anchor);
   return {
     symbol: featured.symbol,
     cluster: CLUSTER,

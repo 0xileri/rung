@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { PublicKey, Transaction } from '@solana/web3.js';
-import { quoteStrike, type PreStockAsset } from '../../../packages/sdk/src/valuation.ts';
+import { bandAnchor, defaultTarget, quoteStrike, type PreStockAsset } from '../../../packages/sdk/src/valuation.ts';
 import {
   buildCreateCommitment,
   explainError,
@@ -67,11 +67,7 @@ export function CommitPanel({
   const { setVisible } = useWalletModal();
 
   const [target, setTarget] = useState(() =>
-    bands.reduce(
-      (best, b) =>
-        Math.abs(b - markValuation * 0.8) < Math.abs(best - markValuation * 0.8) ? b : best,
-      bands[0],
-    ),
+    defaultTarget(bands, bandAnchor({ markValuation, impliedValuation })),
   );
   const [size, setSize] = useState(100);
   const [expiryDays, setExpiryDays] = useState(30);

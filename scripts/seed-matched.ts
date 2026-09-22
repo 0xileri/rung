@@ -18,7 +18,7 @@ import { AnchorProvider, Program, Wallet, type Idl } from '@coral-xyz/anchor';
 import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
 import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID, createAssociatedTokenAccountIdempotent, mintTo } from '@solana/spl-token';
 import { fetchMintState, fetchPreStock, rpcFromUrl } from '../packages/sdk/src/prestocks.ts';
-import { quoteStrike, valuationBands } from '../packages/sdk/src/valuation.ts';
+import { bandAnchor, defaultTarget, quoteStrike, valuationBands } from '../packages/sdk/src/valuation.ts';
 import { grossUpForRequired, worstCaseTransferFee } from '../packages/sdk/src/token2022.ts';
 import { rungFlows, usd } from './lib/rung-flows.ts';
 
@@ -76,11 +76,8 @@ async function main() {
 
   const asset = await fetchPreStock('OPENAI');
   const state = await fetchMintState(mint.toBase58(), rpcFromUrl(RPC));
-  // The band nearest 80% of the mark: the same default the commit panel opens with.
-  const bands = valuationBands(asset.markValuation, 6);
-  const target = bands.reduce((best, b) =>
-    Math.abs(b - asset.markValuation * 0.8) < Math.abs(best - asset.markValuation * 0.8) ? b : best,
-  );
+  // The same default the commit panel opens with.
+  const target = defaultTarget(valuationBands(bandAnchor(asset), 6), bandAnchor(asset));
   const q = quoteStrike({ asset, targetValuation: target, strikeUsd: SIZE_USD, decimals: state.decimals, multiplier: state.multiplier, transferFee: state.transferFee });
 
   const h = await rung.create(mint, q.rawQuantity, usd(SIZE_USD), usd(PREMIUM_USD), EXPIRY_DAYS * 86400, target);

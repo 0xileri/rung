@@ -135,8 +135,25 @@ export function quoteStrike(input: StrikeQuoteInput): StrikeQuote {
 }
 
 /** Standardized bands from §32 — keeps liquidity from fragmenting across arbitrary strikes. */
-export function valuationBands(markValuation: number, count = 6): number[] {
-  const magnitude = 10 ** Math.floor(Math.log10(markValuation) - 1);
-  const top = Math.round(markValuation / magnitude) * magnitude;
+export function valuationBands(anchorValuation: number, count = 6): number[] {
+  const magnitude = 10 ** Math.floor(Math.log10(anchorValuation) - 1);
+  const top = Math.round(anchorValuation / magnitude) * magnitude;
   return Array.from({ length: count }, (_, i) => top - i * magnitude).filter((v) => v > 0);
+}
+
+/**
+ * Where the bands should hang from: the lower of the PreStocks mark and the market.
+ *
+ * A commitment is a buyer naming a valuation at or below where they could buy today. Hung
+ * from the mark alone, an asset trading well below it (SpaceX at -25%) offered only bands
+ * ABOVE the market, and a floor there is a gift: any holder takes it and exercises at once.
+ */
+export function bandAnchor(asset: Pick<PreStockAsset, 'markValuation' | 'impliedValuation'>): number {
+  return Math.min(asset.markValuation, asset.impliedValuation);
+}
+
+/** The band a commit form opens on: the one nearest 80% of the anchor. */
+export function defaultTarget(bands: number[], anchorValuation: number): number {
+  const aim = anchorValuation * 0.8;
+  return bands.reduce((best, b) => (Math.abs(b - aim) < Math.abs(best - aim) ? b : best), bands[0]);
 }

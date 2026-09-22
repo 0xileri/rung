@@ -13,6 +13,14 @@
       "multiplier": 1.4861347,
       "feeBps": 50,
       "mock": true
+    },
+    "SPACEX": {
+      "mint": "3NS9XJR5GbNo6XGQhZBVgCDtfiPY6T1DjcDjX4rrgfZD",
+      "market": "9wCPPbEj2JarSfXhNnHmZ49iRrwP3iJo6cRtMMMyqHVC",
+      "decimals": 9,
+      "multiplier": 5,
+      "feeBps": 100,
+      "mock": true
     }
   },
   "createdAt": "2026-09-20T14:06:57.071Z"

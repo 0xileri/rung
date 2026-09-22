@@ -5,7 +5,7 @@ import { CommitPanel } from '../../../components/CommitPanel';
 import { toOpenCommitments, CLUSTER } from '../../../lib/chain';
 import { getPositionsCached } from '../../../lib/positions-cache';
 import { buildCurve } from '../../../../../packages/sdk/src/commitment-curve.ts';
-import { valuationBands, relativeTo } from '../../../../../packages/sdk/src/valuation.ts';
+import { valuationBands, relativeTo, bandAnchor } from '../../../../../packages/sdk/src/valuation.ts';
 import { band, daysUntil, explorer, pct, shortKey, usd, fromQuote, valuation } from '../../../lib/format';
 import { getPreStocks, findAsset, getMintState } from '../../../lib/prestocks-cache';
 import { escrowTargetFor, LISTED_SYMBOLS } from '../../../lib/deployment';
@@ -78,7 +78,7 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
   const notListed = !escrow.listed;
   const liveMintMissing = escrow.listed && !escrow.mock && !mint;
   const hookSet = escrow.listed && !escrow.mock && Boolean(mint?.transferHookProgramId);
-  const bands = valuationBands(asset.markValuation, 6);
+  const bands = valuationBands(bandAnchor(asset), 6);
 
   const fetched = await getPositionsCached();
   const open = fetched.ok ? toOpenCommitments(fetched.positions, escrow.mint) : [];
@@ -161,8 +161,8 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
               <Link href={`/asset/${s}`}>{s}</Link>
             </span>
           ))}{' '}
-          is listed here, against a mock token. {asset.symbol}&rsquo;s valuations above are live
-          all the same.
+          {LISTED_SYMBOLS.length === 1 ? 'is' : 'are'} listed here, against mock tokens.{' '}
+          {asset.symbol}&rsquo;s valuations above are live all the same.
         </p>
       )}
 

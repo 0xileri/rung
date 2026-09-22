@@ -70,7 +70,10 @@ const payer = Keypair.fromSecretKey(
 );
 
 const USDC_AMOUNT = 5_000;
+/** Whole raw tokens of each mock; a wallet shows this times the mock's multiplier. */
 const STOCK_AMOUNT = 50;
+
+type Market = { mint: string; decimals: number; multiplier: number };
 
 async function retry<T>(label: string, fn: () => Promise<T>, attempts = 5): Promise<T> {
   let last: unknown;
@@ -88,9 +91,7 @@ async function retry<T>(label: string, fn: () => Promise<T>, attempts = 5): Prom
 }
 
 async function main() {
-  const market = deployment.markets.OPENAI;
   const quoteMint = new PublicKey(deployment.quoteMint);
-  const stockMint = new PublicKey(market.mint);
 
   const sol = (await connection.getBalance(recipient)) / 1e9;
   console.log(`Recipient ${recipient.toBase58()}`);
@@ -114,31 +115,34 @@ async function main() {
   const quoteAta = await retry('quote ata', () =>
     createAssociatedTokenAccountIdempotent(connection, payer, quoteMint, recipient, {}, TOKEN_PROGRAM_ID),
   );
-  const stockAta = await retry('stock ata', () =>
-    createAssociatedTokenAccountIdempotent(connection, payer, stockMint, recipient, {}, TOKEN_2022_PROGRAM_ID),
-  );
-
   await retry('mint usdc', () =>
     mintTo(connection, payer, quoteMint, quoteAta, payer,
       BigInt(USDC_AMOUNT) * 10n ** BigInt(deployment.quoteDecimals), [], undefined, TOKEN_PROGRAM_ID),
   );
-  await retry('mint stock', () =>
-    mintTo(connection, payer, stockMint, stockAta, payer,
-      BigInt(STOCK_AMOUNT) * 10n ** BigInt(market.decimals), [], undefined, TOKEN_2022_PROGRAM_ID),
-  );
-
   const q = await getAccount(connection, quoteAta, undefined, TOKEN_PROGRAM_ID);
-  const s = await getAccount(connection, stockAta, undefined, TOKEN_2022_PROGRAM_ID);
 
   console.log('');
   console.log('Funded:');
-  console.log(`  mock USDC    ${Number(q.amount) / 10 ** deployment.quoteDecimals}`);
-  // Displayed in scaled UI units, which is what a wallet shows and what PreStocks quotes.
-  console.log(`  mock OPENAI  ${(Number(s.amount) / 10 ** market.decimals) * market.multiplier} (UI) · ${s.amount} raw`);
+  console.log(`  mock USDC     ${Number(q.amount) / 10 ** deployment.quoteDecimals}`);
+
+  // Every listed market's mock, so the tester can try each one.
+  for (const [symbol, m] of Object.entries(deployment.markets as Record<string, Market>)) {
+    const mint = new PublicKey(m.mint);
+    const ata = await retry(`${symbol} ata`, () =>
+      createAssociatedTokenAccountIdempotent(connection, payer, mint, recipient, {}, TOKEN_2022_PROGRAM_ID),
+    );
+    await retry(`mint ${symbol}`, () =>
+      mintTo(connection, payer, mint, ata, payer,
+        BigInt(STOCK_AMOUNT) * 10n ** BigInt(m.decimals), [], undefined, TOKEN_2022_PROGRAM_ID),
+    );
+    const s = await getAccount(connection, ata, undefined, TOKEN_2022_PROGRAM_ID);
+    // Displayed in scaled UI units, which is what a wallet shows and what PreStocks quotes.
+    console.log(`  mock ${symbol.padEnd(8)} ${(Number(s.amount) / 10 ** m.decimals) * m.multiplier} (UI) · ${s.amount} raw`);
+  }
   console.log('');
-  console.log('Both are MOCK tokens this project minted. The OPENAI mock carries the real');
-  console.log(`PreStock's ${market.multiplier} multiplier and a ${market.feeBps / 100}% transfer fee, so your balance`);
-  console.log('drops slightly on every transfer. That is the mint, not a bug.');
+  console.log('All are MOCK tokens this project minted. Each PreStock mock carries its real');
+  console.log("counterpart's multiplier and a transfer fee, so balances drop slightly on every");
+  console.log('transfer. That is the mint, not a bug.');
 }
 
 main().catch((e) => {

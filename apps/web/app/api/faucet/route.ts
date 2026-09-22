@@ -10,11 +10,12 @@ import {
 } from '@solana/spl-token';
 import devnet from '../../../../../devnet.json';
 import { CLUSTER, connection } from '../../../lib/chain';
+import { findAsset, getPreStocks } from '../../../lib/prestocks-cache';
 
 /**
  * Devnet test-token faucet, so anyone can try both sides of Rung without asking.
  *
- * Mock USDC and mock OPENAI exist only because this project minted them, so nobody can get
+ * The devnet mocks (USDC and each listed PreStock) exist only because this project minted them, so nobody can get
  * them elsewhere. The faucet TRANSFERS from its own stocked wallet (scripts/setup-faucet.ts)
  * rather than minting: the only key this server holds is FAUCET_SECRET_KEY, which owns
  * nothing but devnet SOL and devnet mocks. The deployer key, which can upgrade the program,
@@ -28,8 +29,12 @@ export const dynamic = 'force-dynamic';
 
 /** One position at the program's $1,000 cap. */
 const USDC_GRANT = 1_000n * 10n ** 6n;
-/** Raw units; about 2.97 OPENAI as a wallet shows it, enough to take any floor up to the cap. */
-const STOCK_GRANT = 2n * 10n ** 9n;
+/**
+ * Each mock is granted by value, at today's market price. Token prices differ tenfold
+ * (OpenAI ~$1,100, SpaceX ~$118), so a fixed count cannot be right for both; $2,500 covers
+ * taking a $1,000 floor even at the deepest band, where each token is worth least.
+ */
+const STOCK_GRANT_USD = 2_500;
 const SOL_GRANT = 0.05 * LAMPORTS_PER_SOL;
 /** Below this, the wallet cannot pay for its accounts' rent, so it gets SOL as well. */
 const SOL_FLOOR = 0.02 * LAMPORTS_PER_SOL;
@@ -49,6 +54,8 @@ function faucetKey(): Keypair | null {
     return null;
   }
 }
+
+type DevnetMarket = { mint: string; decimals: number; multiplier: number; feeBps: number };
 
 const fail = (status: number, error: string) => NextResponse.json({ error }, { status });
 
@@ -102,8 +109,20 @@ export async function POST(request: Request) {
 
   const conn = connection();
   const usdc = new PublicKey(devnet.quoteMint);
-  const stock = new PublicKey(devnet.markets.OPENAI.mint);
-  const decimals = { usdc: devnet.quoteDecimals, stock: devnet.markets.OPENAI.decimals };
+  // Every listed market's mock, so a tester can try each one, each sized by live price.
+  let assets: Awaited<ReturnType<typeof getPreStocks>>['assets'];
+  try {
+    ({ assets } = await getPreStocks());
+  } catch {
+    return fail(503, 'Live prices are unavailable, so grants cannot be sized. Try again shortly.');
+  }
+  const stocks = Object.entries(devnet.markets as Record<string, DevnetMarket>).flatMap(([symbol, m]) => {
+    const price = findAsset(assets, symbol)?.tokenPrice;
+    if (!price || price <= 0) return [];
+    const ui = STOCK_GRANT_USD / price;
+    // The spread goes first so the PublicKey is not overwritten by devnet.json's string.
+    return [{ ...m, symbol, mint: new PublicKey(m.mint), raw: BigInt(Math.ceil((ui / m.multiplier) * 10 ** m.decimals)) }];
+  });
 
   try {
     const tx = new Transaction();
@@ -113,46 +132,52 @@ export async function POST(request: Request) {
       tx.add(SystemProgram.transfer({ fromPubkey: faucet.publicKey, toPubkey: recipient, lamports: SOL_GRANT }));
     }
     const toUsdc = getAssociatedTokenAddressSync(usdc, recipient, false, TOKEN_PROGRAM_ID);
-    const toStock = getAssociatedTokenAddressSync(stock, recipient, false, TOKEN_2022_PROGRAM_ID);
     tx.add(
       createAssociatedTokenAccountIdempotentInstruction(faucet.publicKey, toUsdc, recipient, usdc, TOKEN_PROGRAM_ID),
-      createAssociatedTokenAccountIdempotentInstruction(faucet.publicKey, toStock, recipient, stock, TOKEN_2022_PROGRAM_ID),
       createTransferCheckedInstruction(
         getAssociatedTokenAddressSync(usdc, faucet.publicKey, false, TOKEN_PROGRAM_ID),
         usdc,
         toUsdc,
         faucet.publicKey,
         USDC_GRANT,
-        decimals.usdc,
+        devnet.quoteDecimals,
         [],
         TOKEN_PROGRAM_ID,
       ),
-      createTransferCheckedInstruction(
-        getAssociatedTokenAddressSync(stock, faucet.publicKey, false, TOKEN_2022_PROGRAM_ID),
-        stock,
-        toStock,
-        faucet.publicKey,
-        STOCK_GRANT,
-        decimals.stock,
-        [],
-        TOKEN_2022_PROGRAM_ID,
-      ),
     );
+    for (const s of stocks) {
+      const to = getAssociatedTokenAddressSync(s.mint, recipient, false, TOKEN_2022_PROGRAM_ID);
+      tx.add(
+        createAssociatedTokenAccountIdempotentInstruction(faucet.publicKey, to, recipient, s.mint, TOKEN_2022_PROGRAM_ID),
+        createTransferCheckedInstruction(
+          getAssociatedTokenAddressSync(s.mint, faucet.publicKey, false, TOKEN_2022_PROGRAM_ID),
+          s.mint,
+          to,
+          faucet.publicKey,
+          s.raw,
+          s.decimals,
+          [],
+          TOKEN_2022_PROGRAM_ID,
+        ),
+      );
+    }
     const signature = await sendAndConfirmByPolling(conn, tx, faucet);
 
     lastClaimByWallet.set(wallet, now);
     claimsByIp.set(ip, [...recent, now]);
-    // What lands, not what was sent: the mock charges a transfer fee like the real mint.
-    const arrives = amountReceived(STOCK_GRANT, {
-      epoch: 0n,
-      transferFeeBasisPoints: devnet.markets.OPENAI.feeBps,
-      maximumFee: 2n ** 64n - 1n,
-    });
     return NextResponse.json({
       signature,
       sol: sendSol ? SOL_GRANT / LAMPORTS_PER_SOL : 0,
-      usdc: Number(USDC_GRANT) / 10 ** decimals.usdc,
-      stockUi: rawToUi(arrives, decimals.stock, devnet.markets.OPENAI.multiplier),
+      usdc: Number(USDC_GRANT) / 10 ** devnet.quoteDecimals,
+      // What lands, not what was sent: each mock charges a transfer fee like the real mint.
+      stocks: stocks.map((s) => ({
+        symbol: s.symbol,
+        ui: rawToUi(
+          amountReceived(s.raw, { epoch: 0n, transferFeeBasisPoints: s.feeBps, maximumFee: 2n ** 64n - 1n }),
+          s.decimals,
+          s.multiplier,
+        ),
+      })),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

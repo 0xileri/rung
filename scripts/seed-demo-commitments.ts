@@ -1,8 +1,8 @@
 /**
- * Seed a few open OpenAI commitments on devnet so the Commitment Curve and the Protect page
- * have something real to show in a demo.
+ * Seed a few open commitments on a devnet market (OpenAI unless --symbol says otherwise) so
+ * the Commitment Curve and the Protect page have something real to show in a demo.
  *
- *   bash scripts/wsl/run.sh node scripts/seed-demo-commitments.ts [--dry-run] [--reset]
+ *   bash scripts/wsl/run.sh node scripts/seed-demo-commitments.ts [--symbol SPACEX] [--dry-run] [--reset]
  *
  * Signs with the deployer key (~/.config/solana/id.json), which setup-devnet funded with mock
  * USDC. Quantities come from the SDK's quoteStrike against the live PreStocks API -- the same
@@ -30,9 +30,11 @@ import {
 } from '@solana/spl-token';
 import { Connection, Keypair, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
 import { fetchPreStock } from '../packages/sdk/src/prestocks.ts';
-import { isFeedConsistent, quoteStrike, valuationBands } from '../packages/sdk/src/valuation.ts';
+import { bandAnchor, isFeedConsistent, quoteStrike, valuationBands } from '../packages/sdk/src/valuation.ts';
 
-const SYMBOL = 'OPENAI';
+// --symbol picks the market; each listed one has its own mock mint in devnet.json.
+const symbolArg = process.argv.indexOf('--symbol');
+const SYMBOL = (symbolArg > -1 ? process.argv[symbolArg + 1] : 'OPENAI').toUpperCase();
 const EXPIRY_DAYS = 30;
 
 // Nearest floor first. Premium falls as the floor gets deeper, because protection further
@@ -95,9 +97,11 @@ async function main() {
     `Live     implied ${valuationLabel(asset.impliedValuation)}  mark ${valuationLabel(asset.markValuation)}  mark price $${asset.markPrice.toFixed(2)}`,
   );
 
-  // Floors on the same grid the curve buckets into, strictly below the mark.
-  const floors = valuationBands(asset.markValuation, 6).filter((v) => v < asset.markValuation);
-  if (floors.length < LADDER.length) throw new Error(`Only ${floors.length} bands below the mark`);
+  // Floors on the same grid the curve buckets into, strictly below the lower of mark and
+  // market: a floor above where the asset trades is a gift to whichever holder takes it.
+  const anchor = bandAnchor(asset);
+  const floors = valuationBands(anchor, 6).filter((v) => v < anchor);
+  if (floors.length < LADDER.length) throw new Error(`Only ${floors.length} bands below ${valuationLabel(anchor)}`);
   const seeds = LADDER.map((rung, i) => ({ ...rung, target: floors[i] }));
 
   const existing = await program.account.position.all();

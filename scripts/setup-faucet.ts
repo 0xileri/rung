@@ -19,7 +19,7 @@ const RPC = process.env.SEED_RPC_URL ?? 'https://api.devnet.solana.com';
 const DIR = `${process.env.HOME}/rung-demo`;
 const SOL_TARGET = 1.5;
 const USDC_TARGET = 1_000_000n * 10n ** 6n;
-const STOCK_TARGET = 2_000n * 10n ** 9n; // raw; ~2,972 OPENAI as a wallet displays it
+const STOCK_TARGET = 2_000n * 10n ** 9n; // raw, per listed mock: hundreds of claims each
 
 async function main() {
   mkdirSync(DIR, { recursive: true });
@@ -32,7 +32,9 @@ async function main() {
   const conn = new Connection(RPC, 'confirmed');
   const deployment = JSON.parse(readFileSync('devnet.json', 'utf8'));
   const usdc = new PublicKey(deployment.quoteMint);
-  const stock = new PublicKey(deployment.markets.OPENAI.mint);
+  const stocks = Object.entries(deployment.markets as Record<string, { mint: string }>).map(
+    ([symbol, m]) => ({ symbol, mint: new PublicKey(m.mint) }),
+  );
 
   console.log(`Faucet   ${faucet.publicKey.toBase58()}`);
 
@@ -48,15 +50,17 @@ async function main() {
   }
 
   const usdcAta = await createAssociatedTokenAccountIdempotent(conn, deployer, usdc, faucet.publicKey, {}, TOKEN_PROGRAM_ID);
-  const stockAta = await createAssociatedTokenAccountIdempotent(conn, deployer, stock, faucet.publicKey, {}, TOKEN_2022_PROGRAM_ID);
   const usdcHave = (await getAccount(conn, usdcAta, 'confirmed', TOKEN_PROGRAM_ID)).amount;
-  const stockHave = (await getAccount(conn, stockAta, 'confirmed', TOKEN_2022_PROGRAM_ID)).amount;
   if (usdcHave < USDC_TARGET) await mintTo(conn, deployer, usdc, usdcAta, deployer, USDC_TARGET - usdcHave, [], undefined, TOKEN_PROGRAM_ID);
-  if (stockHave < STOCK_TARGET) await mintTo(conn, deployer, stock, stockAta, deployer, STOCK_TARGET - stockHave, [], undefined, TOKEN_2022_PROGRAM_ID);
 
   console.log(`SOL      ${(await conn.getBalance(faucet.publicKey)) / LAMPORTS_PER_SOL}`);
   console.log(`USDC     ${Number((await getAccount(conn, usdcAta, 'confirmed', TOKEN_PROGRAM_ID)).amount) / 1e6}`);
-  console.log(`OPENAI   ${(await getAccount(conn, stockAta, 'confirmed', TOKEN_2022_PROGRAM_ID)).amount} raw`);
+  for (const s of stocks) {
+    const ata = await createAssociatedTokenAccountIdempotent(conn, deployer, s.mint, faucet.publicKey, {}, TOKEN_2022_PROGRAM_ID);
+    const have = (await getAccount(conn, ata, 'confirmed', TOKEN_2022_PROGRAM_ID)).amount;
+    if (have < STOCK_TARGET) await mintTo(conn, deployer, s.mint, ata, deployer, STOCK_TARGET - have, [], undefined, TOKEN_2022_PROGRAM_ID);
+    console.log(`${s.symbol.padEnd(8)} ${(await getAccount(conn, ata, 'confirmed', TOKEN_2022_PROGRAM_ID)).amount} raw`);
+  }
   console.log(`\nSet FAUCET_SECRET_KEY on the server to the contents of ${path}.`);
 }
 
