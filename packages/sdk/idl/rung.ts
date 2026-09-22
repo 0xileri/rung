@@ -590,6 +590,92 @@ export type Rung = {
       "args": []
     },
     {
+      "name": "closeFill",
+      "docs": [
+        "Reclaim the rent on a fill that has already settled. Taker only."
+      ],
+      "discriminator": [
+        64,
+        145,
+        84,
+        179,
+        61,
+        80,
+        53,
+        149
+      ],
+      "accounts": [
+        {
+          "name": "taker",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "fill"
+          ]
+        },
+        {
+          "name": "position",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "position.maker",
+                "account": "position"
+              },
+              {
+                "kind": "account",
+                "path": "position.nonce",
+                "account": "position"
+              }
+            ]
+          },
+          "relations": [
+            "fill"
+          ]
+        },
+        {
+          "name": "fill",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  105,
+                  108,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "position"
+              },
+              {
+                "kind": "account",
+                "path": "fill.index",
+                "account": "fill"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "createCommitment",
       "docs": [
         "Maker (valuation buyer) locks USDC against a target valuation."
@@ -947,8 +1033,8 @@ export type Rung = {
         {
           "name": "fill",
           "docs": [
-            "Closed once settled: the claim is spent, and its rent goes back to the taker who",
-            "paid it at match."
+            "Left in place once settled, as the record that this holder held this protection and",
+            "how it ended. `close_fill` returns its rent whenever the taker asks."
           ],
           "writable": true,
           "pda": {
@@ -1280,8 +1366,8 @@ export type Rung = {
         {
           "name": "fill",
           "docs": [
-            "Closed once settled. Its rent goes back to the taker who paid it at match, not to",
-            "whoever happened to crank the expiry."
+            "Left in place once settled, as the record of how this fill ended. Its rent goes back",
+            "to the taker through `close_fill`, never to whoever happened to crank the expiry."
           ],
           "writable": true,
           "pda": {

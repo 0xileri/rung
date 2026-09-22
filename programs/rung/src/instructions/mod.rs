@@ -1,6 +1,7 @@
 pub mod accept_commitment;
 pub mod add_market;
 pub mod cancel_commitment;
+pub mod close_fill;
 pub mod create_commitment;
 pub mod exercise_fill;
 pub mod expire_fill;
@@ -18,6 +19,7 @@ pub mod set_paused;
 pub use accept_commitment::*;
 pub use add_market::*;
 pub use cancel_commitment::*;
+pub use close_fill::*;
 pub use create_commitment::*;
 pub use exercise_fill::*;
 pub use expire_fill::*;

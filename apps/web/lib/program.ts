@@ -31,6 +31,7 @@ export const CONFIG_SEED = Buffer.from('config');
 export const MARKET_SEED = Buffer.from('market');
 export const POSITION_SEED = Buffer.from('position');
 export const POSITION_AUTHORITY_SEED = Buffer.from('position_authority');
+export const FILL_SEED = Buffer.from('fill');
 
 export function deriveConfig(): PublicKey {
   return PublicKey.findProgramAddressSync([CONFIG_SEED], PROGRAM_ID)[0];
@@ -45,6 +46,13 @@ export function derivePosition(maker: PublicKey, nonce: bigint): PublicKey {
   const buf = Buffer.alloc(8);
   buf.writeBigUInt64LE(nonce);
   return PublicKey.findProgramAddressSync([POSITION_SEED, maker.toBuffer(), buf], PROGRAM_ID)[0];
+}
+
+/** One taker's claim on part of a commitment. Indexed by the position's fill counter. */
+export function deriveFill(position: PublicKey, index: number): PublicKey {
+  const seed = Buffer.alloc(4);
+  seed.writeUInt32LE(index);
+  return PublicKey.findProgramAddressSync([FILL_SEED, position.toBuffer(), seed], PROGRAM_ID)[0];
 }
 
 export function derivePositionAuthority(position: PublicKey): PublicKey {
@@ -73,6 +81,11 @@ export type ProtocolAccounts = {
   stockTokenProgram: PublicKey;
   marketEnabled: boolean;
   paused: boolean;
+  /** Protocol cut of the premium, in basis points. Paid out of the premium, not on top. */
+  feeBps: number;
+  feeTreasury: PublicKey;
+  /** Smallest slice of a commitment a taker may take, in raw quote units. */
+  minFillQuote: bigint;
 };
 
 /**
@@ -119,6 +132,9 @@ export async function loadProtocolAccounts(
       quoteMint: PublicKey;
       quoteTokenProgram: PublicKey;
       paused: boolean;
+      feeBps: number;
+      feeTreasury: PublicKey;
+      minFillQuote: { toString(): string };
     };
   } catch (e) {
     return notFound(e)
@@ -148,6 +164,9 @@ export async function loadProtocolAccounts(
       stockTokenProgram: market.tokenProgram,
       marketEnabled: market.enabled,
       paused: config.paused,
+      feeBps: config.feeBps,
+      feeTreasury: config.feeTreasury,
+      minFillQuote: BigInt(config.minFillQuote.toString()),
     },
   };
 }
@@ -233,6 +252,11 @@ export function explainError(err: unknown): string {
     TransferHookSet:
       'The issuer has attached a transfer hook to this PreStock, which Rung cannot settle through yet, so it is not taking new positions.',
     SelfMatch: 'You cannot take the other side of your own commitment.',
+    FillTooSmall: 'That slice is below the minimum. Take more, or take what is left of this commitment.',
+    FillRemainderTooSmall:
+      'That would leave a remainder too small for anyone else to take. Take a little less, or take all of it.',
+    FillExceedsOpen: 'This commitment no longer has that much open. Reload and try again.',
+    NothingOpen: 'Someone took the rest of this commitment first.',
   };
   for (const [key, message] of Object.entries(named)) {
     if (text.includes(key)) return message;
@@ -256,6 +280,10 @@ export type AcceptArgs = {
   accounts: ProtocolAccounts;
   /** What LEAVES the taker's account — grossed up so the vault clears the floor. */
   stockRawToSend: bigint;
+  /** How much of the maker's escrowed USDC this slice claims. */
+  fillStrikeQuote: bigint;
+  /** The commitment's fill counter, which indexes the new fill's address. */
+  fillIndex: number;
 };
 
 /**
@@ -271,21 +299,31 @@ export async function buildAcceptCommitment(program: Program, args: AcceptArgs) 
   const { quoteMint, quoteTokenProgram, stockMint, stockTokenProgram } = args.accounts;
 
   return program.methods
-    .acceptCommitment(new BN(args.stockRawToSend.toString()))
+    .acceptCommitment(new BN(args.stockRawToSend.toString()), new BN(args.fillStrikeQuote.toString()))
     .accounts({
       taker: args.taker,
       config: deriveConfig(),
       market: deriveMarket(stockMint),
       position: args.position,
+      fill: deriveFill(args.position, args.fillIndex),
       positionAuthority: authority,
       stockMint,
       quoteMint,
       takerStockAccount: getAssociatedTokenAddressSync(stockMint, args.taker, false, stockTokenProgram),
       takerQuoteAccount: getAssociatedTokenAddressSync(quoteMint, args.taker, false, quoteTokenProgram),
       makerQuoteAccount: getAssociatedTokenAddressSync(quoteMint, args.maker, false, quoteTokenProgram),
+      feeTreasuryAccount: getAssociatedTokenAddressSync(
+        quoteMint,
+        args.accounts.feeTreasury,
+        true,
+        quoteTokenProgram,
+      ),
+      feeTreasury: args.accounts.feeTreasury,
       stockVault: getAssociatedTokenAddressSync(stockMint, authority, true, stockTokenProgram),
       stockTokenProgram,
       quoteTokenProgram,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
     })
     .instruction();
 }
@@ -293,16 +331,17 @@ export async function buildAcceptCommitment(program: Program, args: AcceptArgs) 
 /** Exercise: swap the escrowed stock for the escrowed USDC. Taker only, before expiry. */
 export async function buildExercisePosition(
   program: Program,
-  args: { taker: PublicKey; position: PublicKey; maker: PublicKey; accounts: ProtocolAccounts },
+  args: { taker: PublicKey; position: PublicKey; fill: PublicKey; maker: PublicKey; accounts: ProtocolAccounts },
 ) {
   const authority = derivePositionAuthority(args.position);
   const { quoteMint, quoteTokenProgram, stockMint, stockTokenProgram } = args.accounts;
 
   return program.methods
-    .exercisePosition()
+    .exerciseFill()
     .accounts({
       taker: args.taker,
       position: args.position,
+      fill: args.fill,
       positionAuthority: authority,
       maker: args.maker,
       stockMint,
@@ -347,16 +386,17 @@ export async function buildCancelCommitment(
  */
 export async function buildExpirePosition(
   program: Program,
-  args: { cranker: PublicKey; position: PublicKey; maker: PublicKey; taker: PublicKey; accounts: ProtocolAccounts },
+  args: { cranker: PublicKey; position: PublicKey; fill: PublicKey; maker: PublicKey; taker: PublicKey; accounts: ProtocolAccounts },
 ) {
   const authority = derivePositionAuthority(args.position);
   const { quoteMint, quoteTokenProgram, stockMint, stockTokenProgram } = args.accounts;
 
   return program.methods
-    .expirePosition()
+    .expireFill()
     .accounts({
       cranker: args.cranker,
       position: args.position,
+      fill: args.fill,
       maker: args.maker,
       taker: args.taker,
       positionAuthority: authority,

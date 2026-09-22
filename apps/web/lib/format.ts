@@ -41,6 +41,18 @@ export function fromQuote(raw: bigint | number, decimals = 6): number {
   return Number(raw) / 10 ** decimals;
 }
 
+/**
+ * A dollar figure back to USDC base units.
+ *
+ * Rounds rather than truncates, and treats anything unparseable as zero: a typed amount of
+ * "12.3456789" must land on a whole base unit, and a half-typed one must not become NaN and
+ * propagate into an instruction.
+ */
+export function toQuote(amount: number, decimals = 6): bigint {
+  if (!Number.isFinite(amount) || amount <= 0) return 0n;
+  return BigInt(Math.round(amount * 10 ** decimals));
+}
+
 export function shortKey(key: string, lead = 4, tail = 4): string {
   return key.length <= lead + tail + 1 ? key : `${key.slice(0, lead)}…${key.slice(-tail)}`;
 }

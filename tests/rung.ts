@@ -537,7 +537,8 @@ describe('rung', () => {
       const pos = await program.account.position.fetch(p.position);
       assert.deepEqual(pos.status, { settled: {} }, 'nothing open and no fill outstanding');
       assert.equal(pos.fillsOpen, 0);
-      assert.isNull(await connection.getAccountInfo(fill), 'a settled fill returns its rent');
+      const settledFill = await program.account.fill.fetch(fill);
+      assert.deepEqual(settledFill.status, { exercised: {} }, 'the fill records how it ended');
 
       const takerQuoteAfter = (await getAccount(connection, takerQuote, undefined, TOKEN_PROGRAM_ID)).amount;
       assert.equal((takerQuoteAfter - takerQuoteBefore).toString(), strike.toString(), 'holder receives the full strike');
@@ -572,9 +573,42 @@ describe('rung', () => {
         await exercise(p, fill);
         assert.fail('should have rejected');
       } catch (e: any) {
-        // The fill account is closed by the first exercise, so the second cannot load it.
-        assert.match(e.toString(), /AccountNotInitialized|InvalidState/);
+        assert.include(e.toString(), 'InvalidState');
       }
+    });
+
+    it('returns the fill rent only once it has settled, and only to the taker', async () => {
+      const required = 1_000_000n;
+      const p = await createCommitment({ stockRequired: required, strike: usd(10), premium: usd(1), expiryOffsetSecs: 3600 });
+      const fill = await accept(p, grossUp(required));
+
+      const close = (signer: Keypair) =>
+        program.methods
+          .closeFill()
+          .accounts({ taker: signer.publicKey, position: p.position, fill })
+          .signers([signer])
+          .rpc();
+
+      // A live claim is not a settled one: its rent is what keeps the claim on chain.
+      try {
+        await close(taker);
+        assert.fail('an outstanding fill must not be closable');
+      } catch (e: any) {
+        assert.include(e.toString(), 'InvalidState');
+      }
+
+      await exercise(p, fill);
+      try {
+        await close(maker);
+        assert.fail('only the taker may reclaim their own rent');
+      } catch (e: any) {
+        assert.match(e.toString(), /Unauthorized|ConstraintHasOne|has_one/);
+      }
+
+      const before = await connection.getBalance(taker.publicKey);
+      await close(taker);
+      assert.isNull(await connection.getAccountInfo(fill), 'the record is gone once its rent is reclaimed');
+      assert.isAbove(await connection.getBalance(taker.publicKey), before, 'the rent came back');
     });
 
     it('refuses an unmatched commitment, which has no fill to exercise', async () => {

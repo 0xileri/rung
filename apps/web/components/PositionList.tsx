@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
-import { fetchPositions, CLUSTER, type Position } from '../lib/chain';
+import { fetchPositions, CLUSTER } from '../lib/chain';
+import { holdingsFor, isSettled, type Holding } from '../lib/holdings';
 import { derivePositionAuthority } from '../lib/program';
 import { PublicKey } from '@solana/web3.js';
 import { rawToUi } from '../../../packages/sdk/src/token2022.ts';
@@ -23,6 +24,10 @@ import { PositionActions } from './PositionActions';
 /**
  * A wallet's positions, on both sides of the trade.
  *
+ * One row is one relationship: a slice someone took, or capital still on offer. A commitment
+ * several holders took therefore appears once per holder, each with its own dates, collateral
+ * and P&L, because that is what each of those agreements actually is.
+ *
  * Everything shown is read from chain rather than from anything the interface remembers. The
  * escrowed figures in particular are the vault's real balances: under a transfer fee the
  * amount escrowed is always less than the amount sent, so a UI that echoed back the intended
@@ -31,6 +36,7 @@ import { PositionActions } from './PositionActions';
 
 const STATUS_COLOR: Record<string, string> = {
   Open: 'var(--amber-ink)',
+  PartiallyMatched: 'var(--amber-ink)',
   Matched: 'var(--teal-ink)',
   Exercised: 'var(--text-muted)',
   Expired: 'var(--text-muted)',
@@ -41,7 +47,7 @@ export function PositionList() {
   const { connection } = useConnection();
   const { publicKey, connected } = useWallet();
   const { setVisible } = useWalletModal();
-  const [positions, setPositions] = useState<Position[] | null>(null);
+  const [positions, setPositions] = useState<Holding[] | null>(null);
   // Kept so an empty result can distinguish "you have none" from "none exist at all".
   const [totalOnChain, setTotalOnChain] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -73,7 +79,7 @@ export function PositionList() {
   // Market price per UI token, by symbol, from the same server cache the asset pages use.
   const prices = usePriceBook();
 
-  const pnlFor = (p: Position, side: 'maker' | 'holder') =>
+  const pnlFor = (p: Holding, side: 'maker' | 'holder') =>
     pnlForPosition(p, side, mintScale[p.stockMint], prices);
 
   const quantity = (mint: string, raw: bigint, digits: number) => {
@@ -91,10 +97,7 @@ export function PositionList() {
     }
     setLoadError(null);
     setTotalOnChain(result.positions.length);
-    const mine = result.positions.filter(
-      (p) => p.maker === publicKey.toBase58() || p.taker === publicKey.toBase58(),
-    );
-    setPositions(mine.sort((a, b) => b.createdAt - a.createdAt));
+    setPositions(holdingsFor(result.positions, result.fills, publicKey.toBase58()));
   }, [connection, publicKey]);
 
   useEffect(() => {
@@ -163,7 +166,7 @@ export function PositionList() {
     );
   }
 
-  const total = totalPnl(positions.map((p) => pnlFor(p, p.maker === publicKey?.toBase58() ? 'maker' : 'holder')));
+  const total = totalPnl(positions.map((p) => pnlFor(p, p.side)));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -189,14 +192,15 @@ export function PositionList() {
       )}
 
       {positions.map((p) => {
-        const isMaker = p.maker === publicKey?.toBase58();
+        const isMaker = p.side === 'maker';
         const authority = derivePositionAuthority(new PublicKey(p.pubkey));
         const strike = fromQuote(p.strikeQuoteEscrowed || p.strikeQuoteAmount);
         const premium = fromQuote(p.premiumQuoteAmount);
-        const settled = p.status === 'Exercised' || p.status === 'Expired' || p.status === 'Cancelled';
+        const settled = isSettled(p);
         const pastExpiry = !settled && Date.now() / 1000 >= p.expiryTs;
 
-        // Every date is read off the Position account, which records each transition.
+        // Every date is read off chain: a fill records its own match and settlement, and the
+        // commitment records when it was created and when it expires.
         const timeline: { label: string; ts: number }[] = [{ label: 'Created', ts: p.createdAt }];
         if (p.matchedAt > 0) timeline.push({ label: 'Matched', ts: p.matchedAt });
         if (settled) {
@@ -254,7 +258,7 @@ export function PositionList() {
                 marginBottom: 18,
               }}
             >
-              <PnlField status={p.status} pnl={pnlFor(p, isMaker ? 'maker' : 'holder')} />
+              <PnlField status={p.status} pnl={pnlFor(p, p.side)} />
               <Field label="Creation target" value={valuation(p.targetValuationUsd)} />
               <Field label="USDC strike" value={usd(strike)} />
               <Field
@@ -318,6 +322,9 @@ export function PositionList() {
               </a>
               <span className="fig" style={{ color: 'var(--text-faint)' }}>
                 {isMaker && p.taker ? `taker ${shortKey(p.taker)}` : ''}
+                {isMaker && !p.fillPubkey && p.fillCount > 0
+                  ? `${p.fillCount} holder${p.fillCount === 1 ? '' : 's'} took ${usd(fromQuote(p.filledQuote))}`
+                  : ''}
                 {!isMaker ? `maker ${shortKey(p.maker)}` : ''}
               </span>
             </div>
@@ -341,7 +348,7 @@ function PnlField({
   status,
   pnl,
 }: {
-  status: Position['status'];
+  status: Holding['status'];
   pnl: PositionPnlView;
 }) {
   let value: string;

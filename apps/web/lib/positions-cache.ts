@@ -13,11 +13,14 @@ import { fetchPositions, type PositionsResult } from './chain';
 const FRESH_MS = 10_000;
 const STALE_MAX_MS = 30 * 60_000;
 
-let last: { positions: Extract<PositionsResult, { ok: true }>['positions']; at: number } | null = null;
+type Ok = Extract<PositionsResult, { ok: true }>;
+let last: { positions: Ok['positions']; fills: Ok['fills']; at: number } | null = null;
 let inflight: Promise<PositionsResult> | null = null;
 
 export async function getPositionsCached(): Promise<PositionsResult> {
-  if (last && Date.now() - last.at < FRESH_MS) return { ok: true, positions: last.positions };
+  if (last && Date.now() - last.at < FRESH_MS) {
+    return { ok: true, positions: last.positions, fills: last.fills };
+  }
 
   // Concurrent renders share one read instead of each hitting the RPC.
   inflight ??= fetchPositions().finally(() => {
@@ -26,11 +29,16 @@ export async function getPositionsCached(): Promise<PositionsResult> {
   const result = await inflight;
 
   if (result.ok) {
-    last = { positions: result.positions, at: Date.now() };
+    last = { positions: result.positions, fills: result.fills, at: Date.now() };
     return result;
   }
   if (last && Date.now() - last.at < STALE_MAX_MS) {
-    return { ok: true, positions: last.positions, staleSeconds: Math.round((Date.now() - last.at) / 1000) };
+    return {
+      ok: true,
+      positions: last.positions,
+      fills: last.fills,
+      staleSeconds: Math.round((Date.now() - last.at) / 1000),
+    };
   }
   return result;
 }

@@ -15,6 +15,7 @@ import { buildCurve } from '../../../packages/sdk/src/commitment-curve.ts';
 import { getPreStocks } from '../lib/prestocks-cache';
 import { CLUSTER, connection, toOpenCommitments, type PositionsResult } from '../lib/chain';
 import { getPositionsCached } from '../lib/positions-cache';
+import { matchedRowFor } from '../lib/holdings';
 import { pnlForPosition, priceBook, readMintScales, totalPnl, type MintScale } from '../lib/pnl';
 import { ActivityBand, type Activity } from '../components/ActivityBand';
 import { TryBothSides } from '../components/TryBothSides';
@@ -71,26 +72,31 @@ async function loadHero(featured: PreStockAsset | undefined, fetched: PositionsR
 }
 
 /**
- * Protocol-wide figures, every one computed from Position accounts on chain. P&L uses the
- * same function as My Positions; since each position's two sides are exact opposites, the
- * makers' total is the holders' total negated.
+ * Protocol-wide figures, every one computed from chain accounts. P&L uses the same function
+ * as My Positions, over the same rows: one per matched slice. Since each slice's two sides
+ * are exact opposites, the makers' total is the holders' total negated.
  */
 async function loadActivity(assets: PreStockAsset[], fetched: PositionsResult): Promise<Activity | null> {
   if (!fetched.ok) return null;
-  const positions = fetched.positions;
-  const open = positions.filter((p) => p.status === 'Open');
-  const matched = positions.filter((p) => p.matchedAt > 0);
-  const scales = await readMintScales(connection(), matched.map((p) => p.stockMint)).catch(
+  const { positions, fills } = fetched;
+  // Capital on offer is what no taker has claimed, which is also what a holder could take.
+  const stillOpen = positions.filter((p) => p.strikeQuoteOpen > 0n);
+  const byPosition = new Map(positions.map((p) => [p.pubkey, p]));
+  const matched = fills.flatMap((f) => {
+    const p = byPosition.get(f.position);
+    return p ? [matchedRowFor(p, f)] : [];
+  });
+  const scales = await readMintScales(connection(), matched.map((m) => m.stockMint)).catch(
     () => ({}) as Record<string, MintScale>,
   );
   const prices = priceBook(assets);
   return {
-    committedUsd: open.reduce((s, p) => s + fromQuote(p.strikeQuoteEscrowed), 0),
-    openCount: open.length,
+    committedUsd: stillOpen.reduce((s, p) => s + fromQuote(p.strikeQuoteOpen), 0),
+    openCount: stillOpen.length,
     matchedCount: matched.length,
-    liveCount: matched.filter((p) => p.status === 'Matched').length,
-    premiumsUsd: matched.reduce((s, p) => s + fromQuote(p.premiumQuoteAmount), 0),
-    makers: totalPnl(matched.map((p) => pnlForPosition(p, 'maker', scales[p.stockMint], prices))),
+    liveCount: matched.filter((m) => m.status === 'Matched').length,
+    premiumsUsd: matched.reduce((s, m) => s + fromQuote(m.premiumQuoteAmount), 0),
+    makers: totalPnl(matched.map((m) => pnlForPosition(m, 'maker', scales[m.stockMint], prices))),
     staleSeconds: fetched.staleSeconds,
   };
 }

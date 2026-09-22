@@ -22,11 +22,10 @@ pub struct ExpireFill<'info> {
     )]
     pub position: Box<Account<'info, Position>>,
 
-    /// Closed once settled. Its rent goes back to the taker who paid it at match, not to
-    /// whoever happened to crank the expiry.
+    /// Left in place once settled, as the record of how this fill ended. Its rent goes back
+    /// to the taker through `close_fill`, never to whoever happened to crank the expiry.
     #[account(
         mut,
-        close = taker,
         seeds = [FILL_SEED, position.key().as_ref(), &fill.index.to_le_bytes()],
         bump = fill.bump,
         has_one = position @ RungError::InvalidState,

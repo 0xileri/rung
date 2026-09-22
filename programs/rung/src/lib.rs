@@ -114,4 +114,9 @@ pub mod rung {
     pub fn expire_fill(ctx: Context<ExpireFill>) -> Result<()> {
         instructions::expire_fill::expire_fill(ctx)
     }
+
+    /// Reclaim the rent on a fill that has already settled. Taker only.
+    pub fn close_fill(ctx: Context<CloseFill>) -> Result<()> {
+        instructions::close_fill::close_fill(ctx)
+    }
 }

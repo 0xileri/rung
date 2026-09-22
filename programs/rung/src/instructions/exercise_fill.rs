@@ -21,11 +21,10 @@ pub struct ExerciseFill<'info> {
     )]
     pub position: Box<Account<'info, Position>>,
 
-    /// Closed once settled: the claim is spent, and its rent goes back to the taker who
-    /// paid it at match.
+    /// Left in place once settled, as the record that this holder held this protection and
+    /// how it ended. `close_fill` returns its rent whenever the taker asks.
     #[account(
         mut,
-        close = taker,
         seeds = [FILL_SEED, position.key().as_ref(), &fill.index.to_le_bytes()],
         bump = fill.bump,
         has_one = position @ RungError::InvalidState,

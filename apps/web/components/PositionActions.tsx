@@ -11,15 +11,16 @@ import {
   getProgram,
   loadProtocolAccounts,
 } from '../lib/program';
-import { CLUSTER, type Position } from '../lib/chain';
+import { CLUSTER } from '../lib/chain';
+import type { Holding } from '../lib/holdings';
 import { explorer, shortKey } from '../lib/format';
 
 /**
  * The actions available on a position, and only the ones the program would actually accept.
  *
  * The button set is derived from the same rules the program enforces, so the UI never offers
- * something that will be refused on chain: only the maker cancels, only while Open; only the
- * taker exercises, only while Matched and before expiry; expiry is permissionless once the
+ * something that will be refused on chain: a maker withdraws only what no taker has claimed;
+ * only the taker of a slice exercises it, and only before expiry; expiry is permissionless once the
  * deadline has passed, which is why anyone sees that button rather than just the two
  * counterparties.
  */
@@ -32,7 +33,7 @@ type Phase =
 
 type Action = 'cancel' | 'exercise' | 'expire';
 
-export function PositionActions({ position, onDone }: { position: Position; onDone: () => void }) {
+export function PositionActions({ position, onDone }: { position: Holding; onDone: () => void }) {
   const { connection } = useConnection();
   const wallet = useWallet();
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
@@ -43,7 +44,9 @@ export function PositionActions({ position, onDone }: { position: Position; onDo
   const isTaker = me === position.taker;
   const expired = position.expiryTs < Date.now() / 1000;
 
-  const canCancel = isMaker && position.status === 'Open';
+  // The open row is the only one a maker can withdraw: a fill's collateral is spoken for.
+  const canCancel =
+    isMaker && !position.fillPubkey && (position.status === 'Open' || position.status === 'PartiallyMatched');
   const canExercise = isTaker && position.status === 'Matched' && !expired;
   const canExpire = position.status === 'Matched' && expired;
 
@@ -68,12 +71,14 @@ export function PositionActions({ position, onDone }: { position: Position; onDo
               ? await buildExercisePosition(program, {
                   taker: wallet.publicKey,
                   position: pos,
+                  fill: new PublicKey(position.fillPubkey!),
                   maker: new PublicKey(position.maker),
                   accounts,
                 })
               : await buildExpirePosition(program, {
                   cranker: wallet.publicKey,
                   position: pos,
+                  fill: new PublicKey(position.fillPubkey!),
                   maker: new PublicKey(position.maker),
                   taker: new PublicKey(position.taker!),
                   accounts,
@@ -96,7 +101,7 @@ export function PositionActions({ position, onDone }: { position: Position; onDo
           signature,
           what:
             action === 'cancel'
-              ? 'Commitment cancelled and USDC returned'
+              ? 'Withdrawn — the unclaimed USDC is back in your wallet'
               : action === 'exercise'
                 ? 'Exercised — both legs swapped'
                 : 'Expired — both collaterals returned',
