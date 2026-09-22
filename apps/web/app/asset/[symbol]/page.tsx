@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { CommitmentCurve } from '../../../components/CommitmentCurve';
 import { CommitPanel } from '../../../components/CommitPanel';
+import { AssetSwitcher } from '../../../components/AssetSwitcher';
 import { toOpenCommitments, CLUSTER } from '../../../lib/chain';
 import { getPositionsCached } from '../../../lib/positions-cache';
 import { buildCurve } from '../../../../../packages/sdk/src/commitment-curve.ts';
@@ -55,6 +56,7 @@ async function getAsset(symbol: string) {
 
   return {
     asset,
+    assets,
     mint,
     caveats: mint ? custodyCaveats(mint) : [],
     feedConsistent: isFeedConsistent(asset),
@@ -66,7 +68,16 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
   const data = await getAsset(symbol);
   if (!data) notFound();
 
-  const { asset, mint, caveats, feedConsistent } = data;
+  const { asset, assets, mint, caveats, feedConsistent } = data;
+  // Only tradable markets, so switching never lands on a page whose form is disabled.
+  const switcherOptions = assets
+    .filter((a) => LISTED_SYMBOLS.includes(a.symbol))
+    .map((a) => ({
+      symbol: a.symbol,
+      name: a.name.replace(/ PreStocks$/i, ''),
+      marketValuation: a.impliedValuation,
+      vsMark: relativeTo(a.impliedValuation, a.markValuation),
+    }));
   const escrow = escrowTargetFor(asset.symbol, asset.contract_address);
   // Prefer the escrow mint's own values: those describe the token actually being locked.
   const decimals = escrow.decimals ?? mint?.decimals ?? 9;
@@ -104,8 +115,21 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
         }}
       >
         <div>
-          <div className="label" style={{ marginBottom: 7 }}>
-            {asset.name}
+          <div style={{ marginBottom: 7 }}>
+            {switcherOptions.length > 1 ? (
+              <AssetSwitcher
+                current={{
+                  symbol: asset.symbol,
+                  name: asset.name.replace(/ PreStocks$/i, ''),
+                  marketValuation: asset.impliedValuation,
+                  vsMark: relativeTo(asset.impliedValuation, asset.markValuation),
+                }}
+                options={switcherOptions}
+                page="asset"
+              />
+            ) : (
+              <div className="label">{asset.name}</div>
+            )}
           </div>
           <h1 style={{ fontSize: 44 }}>Where would you own it?</h1>
         </div>

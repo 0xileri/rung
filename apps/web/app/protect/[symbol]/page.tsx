@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ProtectMarket } from '../../../components/ProtectMarket';
+import { AssetSwitcher } from '../../../components/AssetSwitcher';
 import { getPreStocks, findAsset, getMintState } from '../../../lib/prestocks-cache';
 import { relativeTo } from '../../../../../packages/sdk/src/valuation.ts';
 import { pct, valuation } from '../../../lib/format';
@@ -50,12 +51,30 @@ export default async function ProtectPage({ params }: { params: Promise<{ symbol
           ? 'The issuer has attached a transfer hook to this PreStock, which Rung cannot settle through yet, so it is not taking new positions.'
           : undefined;
   const name = asset.name.replace(' PreStocks', '');
+  // Only tradable markets, so switching never lands on a page whose form is disabled.
+  const switcherOptions = assets
+    .filter((a) => LISTED_SYMBOLS.includes(a.symbol))
+    .map((a) => ({
+      symbol: a.symbol,
+      name: a.name.replace(/ PreStocks$/i, ''),
+      marketValuation: a.impliedValuation,
+      vsMark: relativeTo(a.impliedValuation, a.markValuation),
+    }));
 
   return (
     <div className="wrap enter" style={{ paddingTop: 36, paddingBottom: 48, maxWidth: 900 }}>
       <div style={{ marginBottom: 28 }}>
-        <div className="label" style={{ marginBottom: 7 }}>
-          Protect {asset.symbol}
+        <div style={{ marginBottom: 7 }}>
+          {switcherOptions.length > 1 ? (
+            <AssetSwitcher
+              current={{ symbol: asset.symbol, name, marketValuation: asset.impliedValuation, vsMark: marketVsMark }}
+              options={switcherOptions}
+              page="protect"
+              prefix="Protect "
+            />
+          ) : (
+            <div className="label">Protect {asset.symbol}</div>
+          )}
         </div>
         <h1 style={{ fontSize: 42, marginBottom: 14 }}>Sell the upside, keep a floor</h1>
         <p style={{ fontSize: 16, lineHeight: 1.55, color: 'var(--text-muted)', maxWidth: 640, margin: 0 }}>
