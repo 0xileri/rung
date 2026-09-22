@@ -187,14 +187,20 @@ describe('rung: partial fills', () => {
       .rpc();
   }
 
-  /** What the vault owes: the open remainder plus every unsettled fill's claim. */
+  /**
+   * What the vault owes: the open remainder plus every fill still outstanding.
+   *
+   * A settled fill's account stays on chain as the record of how it ended, so outstanding is
+   * a question about status, not about whether the account exists.
+   */
   async function owed(p: ReturnType<typeof pdas>) {
     const position = await program.account.position.fetch(p.position);
     let total = BigInt(position.strikeQuoteOpen.toString());
     for (let i = 0; i < position.fillsCreated; i++) {
       const info = await connection.getAccountInfo(p.fill(i));
-      if (!info) continue; // settled, and closed
+      if (!info) continue; // rent reclaimed through close_fill
       const fill = await program.account.fill.fetch(p.fill(i));
+      if (!('matched' in (fill.status as object))) continue;
       total += BigInt(fill.strikeQuoteAmount.toString());
     }
     return total;
