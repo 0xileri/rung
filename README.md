@@ -104,8 +104,8 @@ gives a power up. See [docs/limitations.md](docs/limitations.md).
 PreStocks API  ──►  valuation context, mark price, implied valuation
                     (never authorizes a transfer)
 
-Solana program ──►  lock · match · exercise · expire
-                    PDA vaults hold both legs
+Solana program ──►  lock · match (whole or in slices) · exercise · expire
+                    PDA vaults hold both legs, one claim per taker
 
 Chain state    ──►  the Commitment Curve, rebuilt by anyone
 ```
@@ -118,7 +118,7 @@ prints and feed manipulation from settlement entirely.
 a fixed strike once, at creation, and then frozen. A later change to the mark, the share count
 or the multiplier cannot rewrite an agreement already in force.
 
-**Settlement cannot be blocked.** `exercise_position` and `expire_position` read neither the
+**Settlement cannot be blocked.** `exercise_fill` and `expire_fill` read neither the
 pause flag nor the market flags, and expiry is permissionless — so no admin switch and no
 absent counterparty can trap collateral that is owed back.
 
@@ -126,7 +126,7 @@ absent counterparty can trap collateral that is owed back.
 
 | Path | |
 |---|---|
-| `programs/rung/` | Anchor program — 9 instructions, PDA vaults |
+| `programs/rung/` | Anchor program — 12 instructions, PDA vaults |
 | `packages/sdk/` | Token-2022 math, valuation→strike, Commitment Curve |
 | `apps/web/` | Next.js app — Commitment Curve, commit, protect, positions |
 | `docs/limitations.md` | What this does not do, stated plainly |
@@ -137,7 +137,7 @@ absent counterparty can trap collateral that is owed back.
 ```bash
 npm install
 npm run test:sdk                      # 44 tests, no chain needed
-bash scripts/wsl/test-local.sh        # 24 tests against a local validator
+bash scripts/wsl/test-local.sh        # 35 tests against a local validator
 bash scripts/wsl/fork-test.sh         # every instruction against the REAL mints, on a mainnet fork
 node scripts/devnet-smoke.ts          # every instruction and guardrail against the live devnet deployment
 node scripts/verify-chain.ts          # re-check the mint against live mainnet
@@ -156,10 +156,10 @@ so yesterday's numbers are not evidence.
 
 **Live:** https://rung.up.railway.app
 
-- Program: **24/24** tests — full lifecycle, both settlement paths, every refusal in the
+- Program: **35/35** tests — full lifecycle, partial fills, both settlement paths, every refusal in the
   state machine, and the launch guardrails below
 - Mainnet fork: **26/26** checks against the real OpenAI and SpaceX mints
-- SDK: **44/44** tests, pinned against live mainnet values
+- SDK: **57/57** tests, pinned against live mainnet values
 - Every instruction has a UI: commit, take the other side, exercise, cancel, settle expiry
 
 ### Launch guardrails
