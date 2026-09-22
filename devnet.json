@@ -21,6 +21,54 @@
       "multiplier": 5,
       "feeBps": 100,
       "mock": true
+    },
+    "ANDURIL": {
+      "mint": "BJyL2P1v4kENE3uHCkxRuxAG3Qjv5KaLMTQVwqJDYfjf",
+      "market": "996igeohhSof5hYDENavXJEBzYkCr7FgAVhoBT17hsS5",
+      "decimals": 9,
+      "multiplier": 1,
+      "feeBps": 100,
+      "mock": true
+    },
+    "ANTHROPIC": {
+      "mint": "GzN2PPFzagbixukwGL5kLUo2F1k1t7EVa8spaicYQUn1",
+      "market": "31ZDAvmu9qU5AosXWVo4UU9KH1e1kXWAevwcgsoFBceX",
+      "decimals": 9,
+      "multiplier": 1,
+      "feeBps": 100,
+      "mock": true
+    },
+    "FIGUREAI": {
+      "mint": "8TCxonhUAPsPG7AJyzuQzZfa43jGXVgeoMgN7xQq3SGg",
+      "market": "EWqjJRazJGYYhJcBowwLHCFu3X8f91XHyYHqzATXTU3q",
+      "decimals": 9,
+      "multiplier": 1,
+      "feeBps": 100,
+      "mock": true
+    },
+    "KALSHI": {
+      "mint": "DqX88Z5P39MRAeFrFsEucAc5CfLTHJgaKA6CKLcDLwkG",
+      "market": "WvCgNQkENYeD5FvTEqUF2ADbfuCQ7hcW8fxFCBPjM7r",
+      "decimals": 9,
+      "multiplier": 1,
+      "feeBps": 100,
+      "mock": true
+    },
+    "NEURALINK": {
+      "mint": "BZC1uGbbwXof8HW8CALPvwjvGTr8WqtArCcs8df4sxqd",
+      "market": "9KGfaozx5cVgmNTp2TiJjm4jp6Dby5TpXiKZUwtR9gR4",
+      "decimals": 9,
+      "multiplier": 1,
+      "feeBps": 100,
+      "mock": true
+    },
+    "POLYMARKET": {
+      "mint": "4PLS8fCUi5xgREWbVUCByPBUyCQHX6ANVJLauituRtQK",
+      "market": "CY6cnY73b6WhC2Dvz3aNzpMLUTUmRLjQ2yAsdC7A7AdS",
+      "decimals": 9,
+      "multiplier": 1,
+      "feeBps": 100,
+      "mock": true
     }
   },
   "createdAt": "2026-09-20T14:06:57.071Z"

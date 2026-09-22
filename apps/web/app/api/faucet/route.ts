@@ -1,5 +1,13 @@
 import { NextResponse } from 'next/server';
-import { Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction, type Connection } from '@solana/web3.js';
+import {
+  Keypair,
+  LAMPORTS_PER_SOL,
+  PublicKey,
+  SystemProgram,
+  Transaction,
+  type Connection,
+  type TransactionInstruction,
+} from '@solana/web3.js';
 import { amountReceived, rawToUi } from '../../../../../packages/sdk/src/token2022.ts';
 import {
   TOKEN_2022_PROGRAM_ID,
@@ -124,66 +132,119 @@ export async function POST(request: Request) {
     return [{ ...m, symbol, mint: new PublicKey(m.mint), raw: BigInt(Math.ceil((ui / m.multiplier) * 10 ** m.decimals)) }];
   });
 
-  try {
-    const tx = new Transaction();
-    const sol = await conn.getBalance(recipient);
-    const sendSol = sol < SOL_FLOOR;
-    if (sendSol) {
-      tx.add(SystemProgram.transfer({ fromPubkey: faucet.publicKey, toPubkey: recipient, lamports: SOL_GRANT }));
-    }
-    const toUsdc = getAssociatedTokenAddressSync(usdc, recipient, false, TOKEN_PROGRAM_ID);
-    tx.add(
-      createAssociatedTokenAccountIdempotentInstruction(faucet.publicKey, toUsdc, recipient, usdc, TOKEN_PROGRAM_ID),
-      createTransferCheckedInstruction(
-        getAssociatedTokenAddressSync(usdc, faucet.publicKey, false, TOKEN_PROGRAM_ID),
-        usdc,
-        toUsdc,
-        faucet.publicKey,
-        USDC_GRANT,
-        devnet.quoteDecimals,
-        [],
-        TOKEN_PROGRAM_ID,
-      ),
-    );
-    for (const s of stocks) {
-      const to = getAssociatedTokenAddressSync(s.mint, recipient, false, TOKEN_2022_PROGRAM_ID);
-      tx.add(
-        createAssociatedTokenAccountIdempotentInstruction(faucet.publicKey, to, recipient, s.mint, TOKEN_2022_PROGRAM_ID),
-        createTransferCheckedInstruction(
-          getAssociatedTokenAddressSync(s.mint, faucet.publicKey, false, TOKEN_2022_PROGRAM_ID),
-          s.mint,
-          to,
-          faucet.publicKey,
-          s.raw,
-          s.decimals,
-          [],
-          TOKEN_2022_PROGRAM_ID,
-        ),
-      );
-    }
-    const signature = await sendAndConfirmByPolling(conn, tx, faucet);
+  const sol = await conn.getBalance(recipient).catch(() => SOL_FLOOR);
+  const sendSol = sol < SOL_FLOOR;
 
-    lastClaimByWallet.set(wallet, now);
-    claimsByIp.set(ip, [...recent, now]);
-    return NextResponse.json({
-      signature,
-      sol: sendSol ? SOL_GRANT / LAMPORTS_PER_SOL : 0,
-      usdc: Number(USDC_GRANT) / 10 ** devnet.quoteDecimals,
-      // What lands, not what was sent: each mock charges a transfer fee like the real mint.
-      stocks: stocks.map((s) => ({
-        symbol: s.symbol,
-        ui: rawToUi(
-          amountReceived(s.raw, { epoch: 0n, transferFeeBasisPoints: s.feeBps, maximumFee: 2n ** 64n - 1n }),
-          s.decimals,
-          s.multiplier,
+  // One group per grant; each group's instructions must land together.
+  const toUsdc = getAssociatedTokenAddressSync(usdc, recipient, false, TOKEN_PROGRAM_ID);
+  const groups: { label: string; ixs: TransactionInstruction[] }[] = [
+    {
+      label: 'USDC',
+      ixs: [
+        ...(sendSol ? [SystemProgram.transfer({ fromPubkey: faucet.publicKey, toPubkey: recipient, lamports: SOL_GRANT })] : []),
+        createAssociatedTokenAccountIdempotentInstruction(faucet.publicKey, toUsdc, recipient, usdc, TOKEN_PROGRAM_ID),
+        createTransferCheckedInstruction(
+          getAssociatedTokenAddressSync(usdc, faucet.publicKey, false, TOKEN_PROGRAM_ID),
+          usdc,
+          toUsdc,
+          faucet.publicKey,
+          USDC_GRANT,
+          devnet.quoteDecimals,
+          [],
+          TOKEN_PROGRAM_ID,
         ),
-      })),
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    if (/insufficient (lamports|funds)/i.test(message)) {
-      return fail(503, 'The faucet has run dry. It is topped up by hand; please try again later.');
+      ],
+    },
+    ...stocks.map((s) => {
+      const to = getAssociatedTokenAddressSync(s.mint, recipient, false, TOKEN_2022_PROGRAM_ID);
+      return {
+        label: s.symbol,
+        ixs: [
+          createAssociatedTokenAccountIdempotentInstruction(faucet.publicKey, to, recipient, s.mint, TOKEN_2022_PROGRAM_ID),
+          createTransferCheckedInstruction(
+            getAssociatedTokenAddressSync(s.mint, faucet.publicKey, false, TOKEN_2022_PROGRAM_ID),
+            s.mint,
+            to,
+            faucet.publicKey,
+            s.raw,
+            s.decimals,
+            [],
+            TOKEN_2022_PROGRAM_ID,
+          ),
+        ],
+      };
+    }),
+  ];
+
+  // Eight assets do not fit one transaction's 1,232 bytes, so the grant goes out in batches.
+  const batches = packIntoTransactions(groups, faucet.publicKey);
+  const signatures: string[] = [];
+  const sent: string[] = [];
+  try {
+    for (const batch of batches) {
+      signatures.push(await sendAndConfirmByPolling(conn, batch.tx, faucet));
+      sent.push(...batch.labels);
     }
-    return fail(502, `The faucet transaction failed: ${message.split('\n')[0].slice(0, 160)}`);
+  } catch (err) {
+    // Whatever already landed counts as a claim, so a failure cannot be retried into a drain.
+    if (signatures.length > 0) {
+      lastClaimByWallet.set(wallet, now);
+      claimsByIp.set(ip, [...recent, now]);
+    }
+    const message = err instanceof Error ? err.message : String(err);
+    const partial = sent.length ? ` Sent before it stopped: ${sent.join(', ')}.` : '';
+    if (/insufficient (lamports|funds)/i.test(message)) {
+      return fail(503, `The faucet has run dry and is topped up by hand; please try again later.${partial}`);
+    }
+    return fail(502, `The faucet transaction failed: ${message.split('\n')[0].slice(0, 160)}.${partial}`);
   }
+
+  lastClaimByWallet.set(wallet, now);
+  claimsByIp.set(ip, [...recent, now]);
+  return NextResponse.json({
+    signatures,
+    sol: sendSol ? SOL_GRANT / LAMPORTS_PER_SOL : 0,
+    usdc: Number(USDC_GRANT) / 10 ** devnet.quoteDecimals,
+    // What lands, not what was sent: each mock charges a transfer fee like the real mint.
+    stocks: stocks.map((s) => ({
+      symbol: s.symbol,
+      ui: rawToUi(
+        amountReceived(s.raw, { epoch: 0n, transferFeeBasisPoints: s.feeBps, maximumFee: 2n ** 64n - 1n }),
+        s.decimals,
+        s.multiplier,
+      ),
+    })),
+  });
+}
+
+/**
+ * Greedily pack instruction groups into as few legacy transactions as fit, measuring the
+ * serialized size rather than guessing a batch count: the limit is bytes, and how many
+ * grants fit depends on how many accounts they share.
+ */
+function packIntoTransactions(groups: { label: string; ixs: TransactionInstruction[] }[], payer: PublicKey) {
+  const MAX_TX_BYTES = 1232;
+  const size = (tx: Transaction) => {
+    tx.feePayer = payer;
+    tx.recentBlockhash = PublicKey.default.toBase58(); // placeholder; the real one is set on send
+    try {
+      return tx.serialize({ requireAllSignatures: false, verifySignatures: false }).length;
+    } catch {
+      // web3.js throws "Transaction too large" rather than returning an oversized length.
+      return Number.POSITIVE_INFINITY;
+    }
+  };
+  const out: { tx: Transaction; labels: string[] }[] = [];
+  let current = { tx: new Transaction(), labels: [] as string[] };
+  for (const g of groups) {
+    const trial = new Transaction().add(...current.tx.instructions, ...g.ixs);
+    if (current.labels.length > 0 && size(trial) > MAX_TX_BYTES) {
+      out.push(current);
+      current = { tx: new Transaction().add(...g.ixs), labels: [g.label] };
+    } else {
+      current = { tx: trial, labels: [...current.labels, g.label] };
+    }
+  }
+  if (current.labels.length > 0) out.push(current);
+  return out;
 }

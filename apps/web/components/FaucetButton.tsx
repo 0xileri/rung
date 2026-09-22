@@ -9,7 +9,7 @@ import { CLUSTER } from '../lib/chain';
 type Phase =
   | { kind: 'idle' }
   | { kind: 'working' }
-  | { kind: 'done'; signature: string; sol: number; usdc: number; stocks: { symbol: string; ui: number }[] }
+  | { kind: 'done'; signatures: string[]; sol: number; usdc: number; stocks: { symbol: string; ui: number }[] }
   | { kind: 'error'; message: string };
 
 /** One click to devnet SOL, mock USDC and mock OPENAI, via /api/faucet. */
@@ -52,9 +52,14 @@ export function FaucetButton() {
           Sent {phase.usdc.toLocaleString()} mock USDC,{' '}
           {phase.stocks.map((s) => `${s.ui.toFixed(2)} mock ${s.symbol}`).join(', ')}
           {phase.sol > 0 ? `, plus ${phase.sol} SOL for fees` : ''}.{' '}
-          <a href={explorer('tx', phase.signature, CLUSTER)} target="_blank" rel="noreferrer">
-            Transaction &#8599;
-          </a>
+          {phase.signatures.map((sig, i) => (
+            <span key={sig}>
+              {i > 0 && ' · '}
+              <a href={explorer('tx', sig, CLUSTER)} target="_blank" rel="noreferrer">
+                {phase.signatures.length > 1 ? `Transaction ${i + 1}` : 'Transaction'} &#8599;
+              </a>
+            </span>
+          ))}
         </p>
       )}
       {phase.kind === 'error' && (

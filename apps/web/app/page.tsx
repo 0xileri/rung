@@ -282,7 +282,8 @@ export default async function Home() {
                   >
                     <span style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.02em' }}>
                       {name}
-                      {LISTED_SYMBOLS.includes(a.symbol) && (
+                      {/* Only informative while some markets are not listed. */}
+                      {LISTED_SYMBOLS.includes(a.symbol) && LISTED_SYMBOLS.length < assets.length && (
                         <span
                           style={{
                             marginLeft: 8,

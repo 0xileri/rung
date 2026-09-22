@@ -37,8 +37,8 @@ stepping out from the line where the asset currently trades.
 1. **Look.** The landing page's Commitment Curve and *On chain now* figures are read live
    from Position accounts, including a live matched position and both sides' P&L.
 2. **Get tokens.** Switch Phantom to devnet, connect, and press **Get test tokens** for devnet
-   SOL, mock USDC and mock OPENAI.
-3. **Try both sides.** Commit at a valuation on OpenAI; from a second wallet, take the other
+   SOL, mock USDC and a mock of every PreStock (all eight are listed on devnet).
+3. **Try both sides.** Commit at a valuation on any PreStock; from a second wallet, take the other
    side on Protect. My Positions shows each side's dates, collateral and P&L, and lets the
    holder exercise.
 
@@ -136,7 +136,7 @@ absent counterparty can trap collateral that is owed back.
 
 ```bash
 npm install
-npm run test:sdk                      # 35 tests, no chain needed
+npm run test:sdk                      # 44 tests, no chain needed
 bash scripts/wsl/test-local.sh        # 24 tests against a local validator
 bash scripts/wsl/fork-test.sh         # every instruction against the REAL mints, on a mainnet fork
 node scripts/devnet-smoke.ts          # every instruction and guardrail against the live devnet deployment
@@ -159,7 +159,7 @@ so yesterday's numbers are not evidence.
 - Program: **24/24** tests — full lifecycle, both settlement paths, every refusal in the
   state machine, and the launch guardrails below
 - Mainnet fork: **26/26** checks against the real OpenAI and SpaceX mints
-- SDK: **35/35** tests, pinned against live mainnet values
+- SDK: **44/44** tests, pinned against live mainnet values
 - Every instruction has a UI: commit, take the other side, exercise, cancel, settle expiry
 
 ### Launch guardrails
@@ -180,17 +180,27 @@ Enforced by the program, not just the interface:
 |---|---|
 | Program | [`6kqka5NWofo1cm6bm5JMhWbQgHeR6YT23qTvwnusSwpM`](https://explorer.solana.com/address/6kqka5NWofo1cm6bm5JMhWbQgHeR6YT23qTvwnusSwpM?cluster=devnet) |
 | Config | [`81keCkSZRierBmcXgcNBqqNTfYszRDvvgviwg4YTg8jo`](https://explorer.solana.com/address/81keCkSZRierBmcXgcNBqqNTfYszRDvvgviwg4YTg8jo?cluster=devnet) |
-| OPENAI market | [`8igHstCvuXTDbP7aJKA2CDtLhejMA18aXMmDMwd1JDtD`](https://explorer.solana.com/address/8igHstCvuXTDbP7aJKA2CDtLhejMA18aXMmDMwd1JDtD?cluster=devnet) |
-| Mock OPENAI mint | [`3Q43N1W6s77VTn2g9Tzp56p6WshVBUzRWknQeh3TVwR6`](https://explorer.solana.com/address/3Q43N1W6s77VTn2g9Tzp56p6WshVBUzRWknQeh3TVwR6?cluster=devnet) |
-| SPACEX market | [`9wCPPbEj2JarSfXhNnHmZ49iRrwP3iJo6cRtMMMyqHVC`](https://explorer.solana.com/address/9wCPPbEj2JarSfXhNnHmZ49iRrwP3iJo6cRtMMMyqHVC?cluster=devnet) |
-| Mock SPACEX mint | [`3NS9XJR5GbNo6XGQhZBVgCDtfiPY6T1DjcDjX4rrgfZD`](https://explorer.solana.com/address/3NS9XJR5GbNo6XGQhZBVgCDtfiPY6T1DjcDjX4rrgfZD?cluster=devnet) |
 | Mock USDC | [`CRUjjjByxTpUfeAhR377RTdpmravXXgSX6eTk93XxBov`](https://explorer.solana.com/address/CRUjjjByxTpUfeAhR377RTdpmravXXgSX6eTk93XxBov?cluster=devnet) |
+
+Every PreStock is listed, each against its own mock (full addresses in [`devnet.json`](devnet.json)):
+
+| Market | Market account | Mock mint | Multiplier | Fee |
+|---|---|---|---|---|
+| OPENAI | [`8igHst…JDtD`](https://explorer.solana.com/address/8igHstCvuXTDbP7aJKA2CDtLhejMA18aXMmDMwd1JDtD?cluster=devnet) | [`3Q43N1…VwR6`](https://explorer.solana.com/address/3Q43N1W6s77VTn2g9Tzp56p6WshVBUzRWknQeh3TVwR6?cluster=devnet) | 1.4861347 | 0.5% |
+| SPACEX | [`9wCPPb…qHVC`](https://explorer.solana.com/address/9wCPPbEj2JarSfXhNnHmZ49iRrwP3iJo6cRtMMMyqHVC?cluster=devnet) | [`3NS9XJ…gfZD`](https://explorer.solana.com/address/3NS9XJR5GbNo6XGQhZBVgCDtfiPY6T1DjcDjX4rrgfZD?cluster=devnet) | 5 | 1% |
+| ANDURIL | [`996ige…hsS5`](https://explorer.solana.com/address/996igeohhSof5hYDENavXJEBzYkCr7FgAVhoBT17hsS5?cluster=devnet) | [`BJyL2P…Yfjf`](https://explorer.solana.com/address/BJyL2P1v4kENE3uHCkxRuxAG3Qjv5KaLMTQVwqJDYfjf?cluster=devnet) | 1 | 1% |
+| ANTHROPIC | [`31ZDAv…BceX`](https://explorer.solana.com/address/31ZDAvmu9qU5AosXWVo4UU9KH1e1kXWAevwcgsoFBceX?cluster=devnet) | [`GzN2PP…QUn1`](https://explorer.solana.com/address/GzN2PPFzagbixukwGL5kLUo2F1k1t7EVa8spaicYQUn1?cluster=devnet) | 1 | 1% |
+| FIGUREAI | [`EWqjJR…TU3q`](https://explorer.solana.com/address/EWqjJRazJGYYhJcBowwLHCFu3X8f91XHyYHqzATXTU3q?cluster=devnet) | [`8TCxon…3SGg`](https://explorer.solana.com/address/8TCxonhUAPsPG7AJyzuQzZfa43jGXVgeoMgN7xQq3SGg?cluster=devnet) | 1 | 1% |
+| KALSHI | [`WvCgNQ…jM7r`](https://explorer.solana.com/address/WvCgNQkENYeD5FvTEqUF2ADbfuCQ7hcW8fxFCBPjM7r?cluster=devnet) | [`DqX88Z…LwkG`](https://explorer.solana.com/address/DqX88Z5P39MRAeFrFsEucAc5CfLTHJgaKA6CKLcDLwkG?cluster=devnet) | 1 | 1% |
+| NEURALINK | [`9KGfao…9gR4`](https://explorer.solana.com/address/9KGfaozx5cVgmNTp2TiJjm4jp6Dby5TpXiKZUwtR9gR4?cluster=devnet) | [`BZC1uG…sxqd`](https://explorer.solana.com/address/BZC1uGbbwXof8HW8CALPvwjvGTr8WqtArCcs8df4sxqd?cluster=devnet) | 1 | 1% |
+| POLYMARKET | [`CY6cnY…7AdS`](https://explorer.solana.com/address/CY6cnY73b6WhC2Dvz3aNzpMLUTUmRLjQ2yAsdC7A7AdS?cluster=devnet) | [`4PLS8f…RtQK`](https://explorer.solana.com/address/4PLS8fCUi5xgREWbVUCByPBUyCQHX6ANVJLauituRtQK?cluster=devnet) | 1 | 1% |
 
 PreStocks exist only on mainnet, so each devnet market escrows a **mock**. Each carries the
 extensions that change the program's arithmetic: 9 decimals, a transfer fee and its real
-counterpart's scaled-amount multiplier (1.4861347 for OpenAI, 5 for SpaceX). The SpaceX mock
-was built from the live mint by `scripts/add-devnet-market.ts`, so it also has the real 1%
-fee and an empty transfer-hook slot; the older OpenAI mock charges 0.5%. Neither has the
+counterpart's scaled-amount multiplier (1.4861347 for OpenAI, 5 for SpaceX, 1 for the rest).
+Every mock but OpenAI's was built from its live mint by `scripts/add-devnet-market.ts`, so
+those also have the real 1% fee and an empty transfer-hook slot; the older OpenAI mock
+charges 0.5%. Neither has the
 pause switch or confidential-transfer extensions, which is why the fork test above exists.
 Mocks are labelled on every screen they appear on, and **valuation data is live from the
 real PreStocks API throughout**.
