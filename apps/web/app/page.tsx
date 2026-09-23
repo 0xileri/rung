@@ -73,8 +73,11 @@ async function loadHero(featured: PreStockAsset | undefined, fetched: PositionsR
 
 /**
  * Protocol-wide figures, every one computed from chain accounts. P&L uses the same function
- * as My Positions, over the same rows: one per matched slice. Since each slice's two sides
- * are exact opposites, the makers' total is the holders' total negated.
+ * as My Positions, over the same rows: one per matched slice.
+ *
+ * Makers and holders are summed separately. Without a protocol fee they are exact opposites,
+ * but a fee is paid by the holder and never reaches the maker, so negating one side to get
+ * the other would quietly credit makers with money the protocol kept.
  */
 async function loadActivity(assets: PreStockAsset[], fetched: PositionsResult): Promise<Activity | null> {
   if (!fetched.ok) return null;
@@ -82,10 +85,12 @@ async function loadActivity(assets: PreStockAsset[], fetched: PositionsResult): 
   // Capital on offer is what no taker has claimed, which is also what a holder could take.
   const stillOpen = positions.filter((p) => p.strikeQuoteOpen > 0n);
   const byPosition = new Map(positions.map((p) => [p.pubkey, p]));
-  const matched = fills.flatMap((f) => {
+  const pairs = fills.flatMap((f) => {
     const p = byPosition.get(f.position);
-    return p ? [matchedRowFor(p, f)] : [];
+    return p ? [{ p, f }] : [];
   });
+  const matched = pairs.map(({ p, f }) => matchedRowFor(p, f, 'maker'));
+  const held = pairs.map(({ p, f }) => matchedRowFor(p, f, 'holder'));
   const scales = await readMintScales(connection(), matched.map((m) => m.stockMint)).catch(
     () => ({}) as Record<string, MintScale>,
   );
@@ -96,7 +101,9 @@ async function loadActivity(assets: PreStockAsset[], fetched: PositionsResult): 
     matchedCount: matched.length,
     liveCount: matched.filter((m) => m.status === 'Matched').length,
     premiumsUsd: matched.reduce((s, m) => s + fromQuote(m.premiumQuoteAmount), 0),
+    feesUsd: matched.reduce((s, m) => s + fromQuote(m.feePaid), 0),
     makers: totalPnl(matched.map((m) => pnlForPosition(m, 'maker', scales[m.stockMint], prices))),
+    holders: totalPnl(held.map((h) => pnlForPosition(h, 'holder', scales[h.stockMint], prices))),
     staleSeconds: fetched.staleSeconds,
   };
 }

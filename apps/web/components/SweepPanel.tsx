@@ -2,13 +2,14 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { PublicKey, Transaction, type TransactionInstruction } from '@solana/web3.js';
+import { PublicKey, type TransactionInstruction } from '@solana/web3.js';
 import { grossUpForRequired, rawToUi, type TransferFee } from '../../../packages/sdk/src/token2022.ts';
 import { planSweep, type CommitmentTerms, type SweepLeg } from '../../../packages/sdk/src/fills.ts';
 import { buildAcceptCommitment, explainError, getProgram, type ProtocolAccounts } from '../lib/program';
 import type { Position } from '../lib/chain';
 import { CLUSTER } from '../lib/chain';
 import { band, explorer, fromQuote, shortKey, toQuote, usd } from '../lib/format';
+import { signAndSendPacked } from '../lib/pack';
 
 /**
  * Buy a whole band of protection in one go.
@@ -17,10 +18,7 @@ import { band, explorer, fromQuote, shortKey, toQuote, usd } from '../lib/format
  * here and $80 there, signing each one. They name an amount; this fills it across the
  * cheapest floors available and asks the wallet to sign the resulting transactions together.
  *
- * Legs are packed by MEASURED transaction size rather than by a guessed count. Each accept
- * carries five accounts of its own, and the limit is bytes, not instructions: packing to a
- * fixed number either wastes room or produces a transaction too large to send, and the second
- * only shows up once someone tries it with a long enough plan.
+ * Legs are packed into as few transactions as fit (lib/pack.ts): two floors go in one.
  */
 
 type Phase =
@@ -29,9 +27,6 @@ type Phase =
   | { kind: 'done'; signatures: string[]; filledUsd: number; legs: number }
   | { kind: 'partial'; signatures: string[]; filledUsd: number; legs: number; message: string }
   | { kind: 'error'; message: string };
-
-/** Solana's packet limit, less a margin for the signatures the wallet adds. */
-const MAX_TX_BYTES = 1150;
 
 export function SweepPanel({
   symbol,
@@ -107,68 +102,18 @@ export function SweepPanel({
         );
       }
 
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
-      const transactions: Transaction[] = [];
-      let current = new Transaction();
-      const size = (tx: Transaction) => {
-        const probe = new Transaction();
-        probe.recentBlockhash = blockhash;
-        probe.feePayer = taker;
-        tx.instructions.forEach((ix) => probe.add(ix));
-        return probe.serialize({ requireAllSignatures: false, verifySignatures: false }).length;
-      };
-
-      for (const ix of built) {
-        const candidate = new Transaction();
-        current.instructions.forEach((existing) => candidate.add(existing));
-        candidate.add(ix);
-        if (current.instructions.length > 0 && size(candidate) > MAX_TX_BYTES) {
-          transactions.push(current);
-          current = new Transaction().add(ix);
-        } else {
-          current = candidate;
-        }
-      }
-      if (current.instructions.length > 0) transactions.push(current);
-
-      for (const tx of transactions) {
-        tx.recentBlockhash = blockhash;
-        tx.feePayer = taker;
-      }
-
-      setPhase({ kind: 'working', note: 'Waiting for your signature' });
-      const signed = await wallet.signAllTransactions(transactions);
-
-      // Sent one at a time, in order. Each transaction is independently valid, so a failure
-      // partway leaves the earlier legs standing rather than unwinding them — which is what
-      // the report below has to say honestly.
-      const signatures: string[] = [];
-      let filled = 0n;
-      let legsDone = 0;
-      let failure: string | null = null;
-      let legIndex = 0;
-
-      for (const [i, tx] of signed.entries()) {
-        const inThis = transactions[i].instructions.length;
-        try {
-          setPhase({ kind: 'working', note: `Confirming ${i + 1} of ${signed.length}` });
-          const signature = await connection.sendRawTransaction(tx.serialize());
-          await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed');
-          signatures.push(signature);
-          for (let k = 0; k < inThis; k++) filled += legs[legIndex + k].quote.strikeQuote;
-          legsDone += inThis;
-        } catch (err) {
-          failure = explainError(err);
-          break;
-        }
-        legIndex += inThis;
-      }
-
-      const filledUsd = fromQuote(filled);
+      // Legs land in order, and a failure partway leaves the earlier ones standing, so the
+      // amount filled is counted from what actually landed rather than from the plan.
+      const result = await signAndSendPacked(connection, wallet, built, (note) =>
+        setPhase({ kind: 'working', note }),
+      );
+      const filledUsd = fromQuote(
+        legs.slice(0, result.landed).reduce((sum, l) => sum + l.quote.strikeQuote, 0n),
+      );
       setPhase(
-        failure
-          ? { kind: 'partial', signatures, filledUsd, legs: legsDone, message: failure }
-          : { kind: 'done', signatures, filledUsd, legs: legsDone },
+        result.failure
+          ? { kind: 'partial', signatures: result.signatures, filledUsd, legs: result.landed, message: result.failure }
+          : { kind: 'done', signatures: result.signatures, filledUsd, legs: result.landed },
       );
       setTarget('');
       onDone();

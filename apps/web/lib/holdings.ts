@@ -53,7 +53,13 @@ export type Holding = {
   fillCount: number;
 };
 
-/** One matched slice, seen from either side. Exported so protocol-wide figures use the same row. */
+/**
+ * One matched slice, seen from either side. Exported so protocol-wide figures use the same row.
+ *
+ * The premium differs by side once a protocol fee is on: the holder pays all of it, and the
+ * maker receives it less the fee. Each row carries its own side's figure, so a maker's P&L is
+ * what actually reached them rather than what the holder sent.
+ */
 export function matchedRowFor(p: Position, f: Fill, side: 'maker' | 'holder' = 'maker'): Holding {
   return {
     key: f.pubkey,
@@ -68,7 +74,7 @@ export function matchedRowFor(p: Position, f: Fill, side: 'maker' | 'holder' = '
     stockRawEscrowed: f.stockRawEscrowed,
     strikeQuoteAmount: f.strikeQuoteAmount,
     strikeQuoteEscrowed: f.strikeQuoteAmount,
-    premiumQuoteAmount: f.premiumPaid,
+    premiumQuoteAmount: side === 'maker' ? f.premiumPaid - f.feePaid : f.premiumPaid,
     feePaid: f.feePaid,
     expiryTs: p.expiryTs,
     createdAt: p.createdAt,

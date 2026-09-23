@@ -159,7 +159,7 @@ so yesterday's numbers are not evidence.
 - Program: **36/36** tests — full lifecycle, partial fills, both settlement paths, every refusal in the
   state machine, and the launch guardrails below
 - Mainnet fork: **26/26** checks against the real OpenAI and SpaceX mints
-- SDK: **57/57** tests, pinned against live mainnet values
+- SDK: **68/68** tests, pinned against live mainnet values
 - Every instruction has a UI: commit, take the other side, exercise, cancel, settle expiry
 
 ### Launch guardrails
