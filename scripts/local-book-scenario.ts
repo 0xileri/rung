@@ -1,7 +1,7 @@
 /**
  * Put a maker's book into every state the book page has to show, on the local stack.
  *
- *   bash scripts/wsl/run.sh node scripts/local-book-scenario.ts <maker.json> <taker.json>
+ *   bash scripts/wsl/run.sh node scripts/local-book-scenario.ts <maker.json> <taker.json> [--expiring N]
  *
  * Both keypairs must already be funded (scripts/fund-tester.ts). Creates, as the maker:
  *
@@ -9,6 +9,9 @@
  *   $120 at $1.25T   $50 taken                         → Partly taken
  *   $60  at $1.05T   $30 taken, the other $30 withdrawn → Fully taken, some withdrawn
  *   $80  at $1.15T   all taken, expires in ~70 seconds  → Expired, waiting to settle
+ *
+ * --expiring N makes N of that last kind instead of one, which is what the keeper needs to
+ * show it batches settlements rather than sending one transaction per claim.
  *
  * Sizes follow the same valuation-to-strike proportion the seed script gets from the live
  * PreStocks API ($100 at $1.00T locks 83,365,949 raw), so P&L on the book page is priced
@@ -29,6 +32,8 @@ if (!/127\.0\.0\.1|localhost/.test(RPC)) {
 }
 
 const [makerPath, takerPath] = process.argv.slice(2);
+const expiringIndex = process.argv.indexOf('--expiring');
+const EXPIRING = expiringIndex > 0 ? Number(process.argv[expiringIndex + 1]) : 1;
 if (!makerPath || !takerPath) {
   console.error('usage: node scripts/local-book-scenario.ts <maker.json> <taker.json>');
   process.exit(1);
@@ -69,9 +74,11 @@ async function main() {
   await rung.cancel(pulled);
   console.log(`Some withdrawn  $30 taken, $30 withdrawn at $1.05T   ${pulled.position.toBase58()}`);
 
-  const expiring = await rung.create(mint, rawFor(80, 1.15), usd(80), usd(2.4), 70, 1.15e12);
-  await rung.accept(expiring, grossUp(rawFor(80, 1.15)), as);
-  console.log(`Expiring        $80 at $1.15T, all taken, deadline in ~70s   ${expiring.position.toBase58()}`);
+  for (let i = 0; i < EXPIRING; i++) {
+    const expiring = await rung.create(mint, rawFor(80, 1.15), usd(80), usd(2.4), 70, 1.15e12);
+    await rung.accept(expiring, grossUp(rawFor(80, 1.15)), as);
+    console.log(`Expiring        $80 at $1.15T, all taken, deadline in ~70s   ${expiring.position.toBase58()}`);
+  }
   console.log(`\nIn ~70 seconds the last one is expired and waiting to settle.`);
 }
 

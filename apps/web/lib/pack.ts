@@ -25,7 +25,14 @@ export function packInstructions(
     probe.recentBlockhash = blockhash;
     probe.feePayer = feePayer;
     ixs.forEach((ix) => probe.add(ix));
-    return probe.serialize({ requireAllSignatures: false, verifySignatures: false }).length;
+    // serialize() throws, rather than returning a length, once past the packet limit; that
+    // throw is the answer "does not fit", not an error. Without this a sweep across four
+    // floors crashed at the point it should have started a second transaction.
+    try {
+      return probe.serialize({ requireAllSignatures: false, verifySignatures: false }).length;
+    } catch {
+      return Infinity;
+    }
   };
 
   const out: Transaction[] = [];

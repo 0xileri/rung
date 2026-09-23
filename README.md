@@ -136,7 +136,7 @@ absent counterparty can trap collateral that is owed back.
 
 ```bash
 npm install
-npm run test:sdk                      # 44 tests, no chain needed
+npm run test:sdk                      # 82 tests, no chain needed
 bash scripts/wsl/test-local.sh        # 36 tests against a local validator
 bash scripts/wsl/fork-test.sh         # every instruction against the REAL mints, on a mainnet fork
 node scripts/devnet-smoke.ts          # every instruction and guardrail against the live devnet deployment
@@ -152,6 +152,42 @@ Nothing is sent to mainnet.
 `verify-chain.ts` is worth running before any demo: the transfer fee is on an epoch schedule,
 so yesterday's numbers are not evidence.
 
+### The keeper
+
+```bash
+node scripts/keeper.ts --once --dry-run   # what is past its deadline, sending nothing
+node scripts/keeper.ts --once             # settle it: one pass, for a cron job
+node scripts/keeper.ts --watch 60         # or loop, backing off if the RPC does
+```
+
+Settling a claim after its deadline is permissionless, so nobody depends on a counterparty
+coming back — and nobody depends on the keeper either. It just saves people the trouble: the
+maker's USDC and the holder's tokens come home without either of them lifting a finger. It
+sends one instruction, `expire_fill`, which the program refuses before the deadline and which
+pays each side only what that claim records, so a keeper with a bug can waste its own fees
+and nothing else. It reads the cluster's clock rather than its own, settles the longest-waiting
+collateral first, and batches settlements by measured transaction size; if a batch fails
+because something changed under it, the claims are retried one at a time.
+
+`--rpc`, `--keypair` and `--limit` (settlements per cycle, default 50) are flags, or
+`KEEPER_RPC_URL` and `KEEPER_KEYPAIR` in the environment. The keypair pays fees, plus rent
+if a recipient no longer has a token account to receive into.
+
+### A local stack
+
+Devnet is shared, so changes to the program are exercised here first:
+
+```bash
+bash scripts/wsl/local-stack-up.sh <tester-address>   # validator, program, market, floors, a funded tester
+NEXT_PUBLIC_CLUSTER=localnet bash scripts/wsl/dev.sh  # the web app, against it
+node scripts/local-book-scenario.ts maker.json taker.json --expiring 5
+bash scripts/wsl/local-stack.sh --stop
+```
+
+`local-book-scenario.ts` puts one maker's book into every state the app has to show —
+untouched, partly taken, partly withdrawn, expired and waiting — which is also what the keeper
+is tested against.
+
 ## Status
 
 **Live:** https://rung.up.railway.app
@@ -159,7 +195,7 @@ so yesterday's numbers are not evidence.
 - Program: **36/36** tests — full lifecycle, partial fills, both settlement paths, every refusal in the
   state machine, and the launch guardrails below
 - Mainnet fork: **26/26** checks against the real OpenAI and SpaceX mints
-- SDK: **76/76** tests, pinned against live mainnet values
+- SDK: **82/82** tests, pinned against live mainnet values
 - Every instruction has a UI: commit, take the other side, exercise, cancel, settle expiry
 
 ### Launch guardrails
