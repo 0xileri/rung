@@ -56,7 +56,7 @@ export function CommitmentCurve({
           const crowded = isConcentrated(b);
 
           return (
-            <div key={b.valuationUsd} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div key={b.valuationUsd} className="curve-row">
               <div
                 className="fig"
                 style={{
@@ -104,6 +104,7 @@ export function CommitmentCurve({
               </div>
 
               <div
+                className="curve-conc"
                 style={{
                   width: 118,
                   fontSize: 11,

@@ -2656,6 +2656,17 @@ export type Rung = {
             "type": "i64"
           },
           {
+            "name": "withdrawnAt",
+            "docs": [
+              "When the maker withdrew the open remainder, or zero if they never did.",
+              "",
+              "Kept separately because `settled_at` is overwritten by every later settlement: without",
+              "it, the moment capital left the book could not be recovered from chain state, and any",
+              "history of offered capital would be wrong from the first withdrawal on."
+            ],
+            "type": "i64"
+          },
+          {
             "name": "targetValuationUsd",
             "docs": [
               "Company valuation, in whole USD, that the maker was targeting at creation.",

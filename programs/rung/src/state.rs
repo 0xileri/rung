@@ -105,6 +105,12 @@ pub struct Position {
     /// Zero until the corresponding transition occurs.
     pub first_matched_at: i64,
     pub settled_at: i64,
+    /// When the maker withdrew the open remainder, or zero if they never did.
+    ///
+    /// Kept separately because `settled_at` is overwritten by every later settlement: without
+    /// it, the moment capital left the book could not be recovered from chain state, and any
+    /// history of offered capital would be wrong from the first withdrawal on.
+    pub withdrawn_at: i64,
 
     /// Company valuation, in whole USD, that the maker was targeting at creation.
     ///

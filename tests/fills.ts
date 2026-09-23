@@ -517,8 +517,15 @@ describe('rung: partial fills', () => {
     // Alice's claim survived the cancel untouched, and is still fully funded.
     const vault = (await getAccount(connection, p.quoteVault, undefined, TOKEN_PROGRAM_ID)).amount;
     assert.equal(vault.toString(), usd(40).toString());
+    const withdrawnAt = position.withdrawnAt.toNumber();
+    assert.isAbove(withdrawnAt, 0, 'the withdrawal is timestamped');
+
     await exercise(p, fill, alice);
     assert.equal((await getAccount(connection, p.quoteVault, undefined, TOKEN_PROGRAM_ID)).amount.toString(), '0');
+
+    // A later settlement moves settled_at on, but must not rewrite when capital left the book.
+    const after = await program.account.position.fetch(p.position);
+    assert.equal(after.withdrawnAt.toNumber(), withdrawnAt);
   });
 
   it('refuses a second withdrawal once nothing is open', async () => {

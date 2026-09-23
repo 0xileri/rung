@@ -75,9 +75,11 @@ pub fn cancel_commitment(ctx: Context<CancelCommitment>) -> Result<()> {
         Some(&[seeds]),
     )?;
 
+    let now = Clock::get()?.unix_timestamp;
     let position = &mut ctx.accounts.position;
     position.strike_quote_open = 0;
-    position.settled_at = Clock::get()?.unix_timestamp;
+    position.settled_at = now;
+    position.withdrawn_at = now;
     // Cancelled if nothing was ever taken; otherwise this is simply a commitment with no
     // open amount left, whose fills still have to run their term.
     position.status = position.derive_status();

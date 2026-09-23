@@ -159,6 +159,7 @@ pub fn create_commitment(
     position.created_at = now;
     position.first_matched_at = 0;
     position.settled_at = 0;
+    position.withdrawn_at = 0;
     position.target_valuation_usd = target_valuation_usd;
     position.fills_created = 0;
     position.fills_open = 0;

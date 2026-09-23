@@ -3,3 +3,4 @@ export * from './valuation.ts';
 export * from './commitment-curve.ts';
 export * from './fills.ts';
 export * from './book.ts';
+export * from './capital.ts';

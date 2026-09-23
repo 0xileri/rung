@@ -55,6 +55,8 @@ export type Position = {
   firstMatchedAt: number;
   /** 0 until something settles; the most recent settlement after that. */
   settledAt: number;
+  /** When the maker withdrew the open remainder, or 0 if never. */
+  withdrawnAt: number;
   targetValuationUsd: number;
   fillsCreated: number;
   fillsOpen: number;
@@ -137,6 +139,7 @@ function mapDecoded(pubkey: PublicKey, p: Record<string, unknown>): Position {
     createdAt: num(field(p, 'created_at', 'createdAt')),
     firstMatchedAt: num(field(p, 'first_matched_at', 'firstMatchedAt')),
     settledAt: num(field(p, 'settled_at', 'settledAt')),
+    withdrawnAt: num(field(p, 'withdrawn_at', 'withdrawnAt')),
     targetValuationUsd: num(field(p, 'target_valuation_usd', 'targetValuationUsd')),
     fillsCreated: num(field(p, 'fills_created', 'fillsCreated')),
     fillsOpen: num(field(p, 'fills_open', 'fillsOpen')),

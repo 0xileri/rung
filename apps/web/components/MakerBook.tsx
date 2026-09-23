@@ -25,6 +25,8 @@ import { pnlColor, pnlForPosition, readMintScales, totalPnl, type MintScale } fr
 import { usePriceBook } from '../lib/use-price-book';
 import { symbolForMint } from '../lib/deployment';
 import { signAndSendPacked } from '../lib/pack';
+import { capitalPointsUsd } from '../lib/capital-view';
+import { CapitalCharts } from './CapitalCharts';
 import { band, dateTime, daysUntil, explorer, fromQuote, shortKey, signedUsd, usd } from '../lib/format';
 
 /**
@@ -123,6 +125,10 @@ export function MakerBook() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chain]);
   const summary = useMemo(() => summarizeBook(lines), [lines]);
+  const capital = useMemo(
+    () => (chain ? capitalPointsUsd(chain.positions, chain.fills, Math.floor(Date.now() / 1000)) : []),
+    [chain],
+  );
 
   /** Maker P&L on one commitment: the sum over its fills, each priced as My Positions does. */
   const pnlOf = useCallback(
@@ -343,6 +349,8 @@ export function MakerBook() {
           note={summary.nextExpiry ? dateTime(summary.nextExpiry) : 'Nothing running'}
         />
       </section>
+
+      {capital.length > 1 && <CapitalCharts points={capital} scope="Your book" />}
 
       {allSettleable.length > 0 && (
         <section className="callout" style={{ margin: 0, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>

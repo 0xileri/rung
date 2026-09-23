@@ -863,3 +863,24 @@ input[type='checkbox'] {
     margin-inline: auto;
   }
 }
+
+/* ——— Commitment Curve rows ———
+   Band, bar, amount and wallet concentration sit in one row. Below ~520px the four fixed
+   columns no longer fit beside a usable bar, so the concentration note drops to its own
+   line, aligned under the bar, rather than pushing the page sideways. */
+.curve-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+@media (max-width: 520px) {
+  .curve-row {
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+  .curve-row .curve-conc {
+    flex-basis: 100%;
+    padding-left: 80px; /* the band label's 66px and the 14px gap */
+  }
+}
