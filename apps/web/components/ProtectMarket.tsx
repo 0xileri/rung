@@ -21,6 +21,7 @@ import {
 import { fetchPositions, toOpenCommitments, CLUSTER, type Position } from '../lib/chain';
 import { quoteFill, fillRejection } from '../../../packages/sdk/src/fills.ts';
 import { band, daysUntil, explorer, fromQuote, shortKey, toQuote, usd } from '../lib/format';
+import { SweepPanel } from './SweepPanel';
 
 /**
  * The holder's side: buy a floor from someone who has committed capital at it.
@@ -245,6 +246,18 @@ export function ProtectMarket({
         >
           {phase.message}
         </p>
+      )}
+
+      {!disabledReason && (
+        <SweepPanel
+          symbol={symbol}
+          positions={positions}
+          accounts={protocol !== 'loading' && protocol.ok ? protocol.accounts : null}
+          worstFee={worstFee}
+          decimals={decimals}
+          multiplier={multiplier}
+          onDone={load}
+        />
       )}
 
       {positions

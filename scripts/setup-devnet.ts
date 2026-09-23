@@ -13,7 +13,9 @@
  * the real mainnet PreStocks API throughout; only the escrowed token is synthetic.
  *
  * Idempotent-ish: re-running creates fresh mints. The existing config and market are reused
- * if already present, and the resulting addresses are written to devnet.json.
+ * if already present, and the resulting addresses are written to devnet.json — or to
+ * DEPLOYMENT_FILE, which is how a local stack keeps its addresses out of the devnet file the
+ * live site reads.
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { AnchorProvider, BN, Program, Wallet, type Idl } from '@coral-xyz/anchor';
@@ -58,10 +60,13 @@ function env(): Record<string, string> {
 }
 
 const cfg = env();
-const RPC = cfg.DEVNET_RPC_URL ?? 'https://api.devnet.solana.com';
+// The environment wins over .env.local: a local stack passes its own RPC, and silently
+// reaching for the devnet endpoint in the file instead would seed the wrong cluster.
+const RPC = process.env.DEVNET_RPC_URL ?? cfg.DEVNET_RPC_URL ?? 'https://api.devnet.solana.com';
 const connection = new Connection(RPC, 'confirmed');
 
 const keypairPath = `${process.env.HOME}/.config/solana/id.json`;
+const outFile = process.env.DEPLOYMENT_FILE ?? 'devnet.json';
 const payer = Keypair.fromSecretKey(
   Uint8Array.from(JSON.parse(readFileSync(keypairPath, 'utf8'))),
 );
@@ -99,9 +104,9 @@ async function retry<T>(label: string, fn: () => Promise<T>, attempts = 5): Prom
 /** Anything a previous partial run already created, so re-running does not orphan mints. */
 type Prior = { quoteMint?: string; stockMint?: string };
 function priorRun(): Prior {
-  if (!existsSync('devnet.json')) return {};
+  if (!existsSync(outFile)) return {};
   try {
-    const j = JSON.parse(readFileSync('devnet.json', 'utf8'));
+    const j = JSON.parse(readFileSync(outFile, 'utf8'));
     return { quoteMint: j.quoteMint, stockMint: j.markets?.[SYMBOL]?.mint };
   } catch {
     return {};
@@ -230,10 +235,10 @@ async function main() {
     },
     createdAt: new Date().toISOString(),
   };
-  writeFileSync('devnet.json', JSON.stringify(out, null, 2) + '\n');
+  writeFileSync(outFile, JSON.stringify(out, null, 2) + '\n');
 
   log('');
-  log('Wrote devnet.json');
+  log(`Wrote ${outFile}`);
   log(`Explorer: https://explorer.solana.com/address/${program.programId.toBase58()}?cluster=devnet`);
 }
 

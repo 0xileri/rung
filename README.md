@@ -137,7 +137,7 @@ absent counterparty can trap collateral that is owed back.
 ```bash
 npm install
 npm run test:sdk                      # 44 tests, no chain needed
-bash scripts/wsl/test-local.sh        # 35 tests against a local validator
+bash scripts/wsl/test-local.sh        # 36 tests against a local validator
 bash scripts/wsl/fork-test.sh         # every instruction against the REAL mints, on a mainnet fork
 node scripts/devnet-smoke.ts          # every instruction and guardrail against the live devnet deployment
 node scripts/verify-chain.ts          # re-check the mint against live mainnet
@@ -156,7 +156,7 @@ so yesterday's numbers are not evidence.
 
 **Live:** https://rung.up.railway.app
 
-- Program: **35/35** tests — full lifecycle, partial fills, both settlement paths, every refusal in the
+- Program: **36/36** tests — full lifecycle, partial fills, both settlement paths, every refusal in the
   state machine, and the launch guardrails below
 - Mainnet fork: **26/26** checks against the real OpenAI and SpaceX mints
 - SDK: **57/57** tests, pinned against live mainnet values

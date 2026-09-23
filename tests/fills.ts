@@ -117,7 +117,13 @@ describe('rung: partial fills', () => {
     return { ...p, nonce };
   }
 
-  async function take(p: ReturnType<typeof pdas>, who: Keypair, fillStrike: BN, send: bigint) {
+  async function take(
+    p: ReturnType<typeof pdas>,
+    who: Keypair,
+    fillStrike: BN,
+    send: bigint,
+    treasury: PublicKey = feeTreasury.publicKey,
+  ) {
     const position = await program.account.position.fetch(p.position);
     const fill = p.fill(position.fillsCreated);
     await program.methods
@@ -134,8 +140,8 @@ describe('rung: partial fills', () => {
         takerStockAccount: stockOf.get(who.publicKey.toBase58())!,
         takerQuoteAccount: quoteOf.get(who.publicKey.toBase58())!,
         makerQuoteAccount: makerQuote,
-        feeTreasuryAccount: getAssociatedTokenAddressSync(quoteMint, feeTreasury.publicKey, false, TOKEN_PROGRAM_ID),
-        feeTreasury: feeTreasury.publicKey,
+        feeTreasuryAccount: getAssociatedTokenAddressSync(quoteMint, treasury, false, TOKEN_PROGRAM_ID),
+        feeTreasury: treasury,
         stockVault: p.stockVault,
         stockTokenProgram: TOKEN_2022_PROGRAM_ID,
         quoteTokenProgram: TOKEN_PROGRAM_ID,
@@ -421,6 +427,34 @@ describe('rung: partial fills', () => {
       (await getAccount(connection, p.quoteVault, undefined, TOKEN_PROGRAM_ID)).amount.toString(),
       usd(50).toString(),
     );
+  });
+
+  it('matches when the maker is also the fee treasury', async () => {
+    // The shape devnet actually has: the admin is the default treasury and also makes the
+    // markets, so the premium and the fee land in the same USDC account. That account is
+    // passed twice as mutable, which Anchor refuses unless the program says it may.
+    await program.methods
+      .setFee(100)
+      .accounts({ admin: admin.publicKey, config: configPda, feeTreasury: maker.publicKey })
+      .rpc();
+    try {
+      const required = 50_000_000n;
+      const p = await createCommitment({ stockRequired: required, strike: usd(50), premium: usd(4) });
+      const before = (await getAccount(connection, makerQuote, undefined, TOKEN_PROGRAM_ID)).amount;
+
+      await take(p, alice, usd(50), grossUp(required), maker.publicKey);
+
+      const after = (await getAccount(connection, makerQuote, undefined, TOKEN_PROGRAM_ID)).amount;
+      // Both halves of the premium arrive in the one account: 3.96 as maker, 0.04 as treasury.
+      assert.equal((after - before).toString(), usd(4).toString());
+      const fill = await program.account.fill.fetch(p.fill(0));
+      assert.equal(fill.feePaid.toString(), usd(0.04).toString(), 'the fee is still recorded as a fee');
+    } finally {
+      await program.methods
+        .setFee(100)
+        .accounts({ admin: admin.publicKey, config: configPda, feeTreasury: feeTreasury.publicKey })
+        .rpc();
+    }
   });
 
   it('refuses a fee above the cap', async () => {

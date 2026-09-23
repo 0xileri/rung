@@ -203,7 +203,14 @@ export type Rung = {
           "name": "feeTreasuryAccount",
           "docs": [
             "The protocol's cut of the premium. Created on demand so a treasury that has never",
-            "held the quote mint cannot make matching fail."
+            "held the quote mint cannot make matching fail.",
+            "",
+            "`dup`, because the treasury can legitimately be one of the parties: an admin who",
+            "makes markets from the treasury wallet makes this the same account as",
+            "`maker_quote_account`, and Anchor would otherwise refuse every match against their",
+            "commitments. The refusal exists to stop two copies of one program-owned account being",
+            "written back on exit; a token account is owned by the token program and never written",
+            "back here, and both credits go through its CPI, which handles a repeated destination."
           ],
           "writable": true,
           "pda": {

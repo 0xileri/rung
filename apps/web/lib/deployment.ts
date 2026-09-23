@@ -1,4 +1,5 @@
 import devnet from '../../../devnet.json';
+import local from '../../../local.json';
 import { CLUSTER } from './chain';
 
 /**
@@ -23,7 +24,10 @@ type DevnetMarket = {
   mock: boolean;
 };
 
-const MARKETS = (devnet as { markets?: Record<string, DevnetMarket> }).markets ?? {};
+// A local validator gets its own file: the devnet addresses belong to the deployment the
+// live site reads, and a local run must not be able to overwrite them.
+const deployment = CLUSTER === 'localnet' ? local : devnet;
+const MARKETS = (deployment as { markets?: Record<string, DevnetMarket> }).markets ?? {};
 
 export type EscrowTarget = {
   /** The mint the program will actually accept. */
