@@ -10,7 +10,7 @@ import { LadderPanel } from '../../../components/LadderPanel';
 import { capitalPointsUsd } from '../../../lib/capital-view';
 import { buildCurve } from '../../../../../packages/sdk/src/commitment-curve.ts';
 import { valuationBands, relativeTo, bandAnchor } from '../../../../../packages/sdk/src/valuation.ts';
-import { band, daysUntil, explorer, pct, shortKey, usd, fromQuote, valuation } from '../../../lib/format';
+import { band, explorer, pct, shortKey, timeUntil, usd, fromQuote, valuation } from '../../../lib/format';
 import { getPreStocks, findAsset, getMintState } from '../../../lib/prestocks-cache';
 import { escrowTargetFor, LISTED_SYMBOLS } from '../../../lib/deployment';
 import { custodyCaveats } from '../../../../../packages/sdk/src/prestocks.ts';
@@ -299,7 +299,7 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
                           {usd(premium)} premium
                         </span>
                         <span style={{ fontSize: 13, color: 'var(--text-muted)', flexGrow: 1 }}>
-                          {daysUntil(c.expiryTs)}d to expiry
+                          {timeUntil(c.expiryTs)} to expiry
                         </span>
                         <a
                           className="fig"

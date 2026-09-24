@@ -27,7 +27,7 @@ import { symbolForMint } from '../lib/deployment';
 import { signAndSendPacked } from '../lib/pack';
 import { capitalPointsUsd } from '../lib/capital-view';
 import { CapitalCharts } from './CapitalCharts';
-import { band, dateTime, daysUntil, explorer, fromQuote, shortKey, signedUsd, usd } from '../lib/format';
+import { band, dateTime, explorer, fromQuote, shortKey, signedUsd, timeUntil, usd } from '../lib/format';
 
 /**
  * A maker's book: every commitment, what holders took from it, and what it earned.
@@ -316,7 +316,7 @@ export function MakerBook() {
         <Tile
           label="On the book"
           value={usd(fromQuote(summary.onBook))}
-          note={`${usd(fromQuote(summary.live))} taken and running · ${usd(fromQuote(summary.open))} still on offer`}
+          note={`${usd(fromQuote(summary.live))} taken and running · ${usd(fromQuote(summary.open))} still on offer${summary.due > 0n ? ` · ${usd(fromQuote(summary.due))} past deadline, waiting to settle` : ''}`}
         />
         <Tile
           label="Taken by holders"
@@ -330,7 +330,7 @@ export function MakerBook() {
           note={
             summary.premiumYield === null
               ? 'Nothing matched yet'
-              : `${(summary.premiumYield * 100).toFixed(2)}% of capital matched${summary.avgTermDays !== null ? `, over ~${Math.round(summary.avgTermDays)}-day terms` : ''}${summary.feePaid > 0n ? ` · ${usd(fromQuote(summary.feePaid))} protocol fee` : ''}`
+              : `${(summary.premiumYield * 100).toFixed(2)}% of capital matched${summary.avgTermDays !== null ? `, over ${summary.avgTermDays >= 1 ? `~${Math.round(summary.avgTermDays)}-day terms` : 'terms under a day'}` : ''}${summary.feePaid > 0n ? ` · ${usd(fromQuote(summary.feePaid))} protocol fee` : ''}`
           }
         />
         <Tile
@@ -345,7 +345,7 @@ export function MakerBook() {
         />
         <Tile
           label="Next deadline"
-          value={summary.nextExpiry ? `${daysUntil(summary.nextExpiry)}d` : '—'}
+          value={summary.nextExpiry ? timeUntil(summary.nextExpiry) : '—'}
           note={summary.nextExpiry ? dateTime(summary.nextExpiry) : 'Nothing running'}
         />
       </section>
@@ -379,7 +379,7 @@ export function MakerBook() {
         const pnl = pnlOf(line);
         const key = c.position;
         const mine = phase.kind !== 'idle' && phase.key === key ? phase : null;
-        const settledTaken = line.taken - line.live;
+        const settledTaken = line.taken - line.live - line.due;
 
         return (
           <article key={key} className={`card ${line.active ? 'tint-amber' : ''}`} style={{ padding: '20px 22px' }}>
@@ -399,7 +399,7 @@ export function MakerBook() {
                 {line.expired
                   ? `Expired ${dateTime(c.expiryTs)}`
                   : line.active
-                    ? `${daysUntil(c.expiryTs)}d to expiry`
+                    ? `${timeUntil(c.expiryTs)} to expiry`
                     : 'Closed'}
               </span>
             </header>
@@ -408,6 +408,7 @@ export function MakerBook() {
               segments={[
                 { amount: settledTaken, color: 'var(--teal-ink)', opacity: 0.45, label: 'taken, settled' },
                 { amount: line.live, color: 'var(--teal-fill)', label: 'taken, running' },
+                { amount: line.due, color: 'var(--caution)', label: 'taken, waiting to settle' },
                 { amount: line.open, color: 'var(--amber-fill)', label: 'on offer' },
                 { amount: line.withdrawn, color: 'var(--line-strong)', label: 'withdrawn' },
               ]}
@@ -555,8 +556,8 @@ function Figure({ label, value, note, accent }: { label: string; value: string; 
 }
 
 /**
- * Where a commitment's capital went, as one bar: taken (settled, then running), still on
- * offer, and withdrawn. Every segment is a share of what was escrowed, so the bar always
+ * Where a commitment's capital went, as one bar: taken (settled, running, or past its deadline
+ * and waiting to settle), still on offer, and withdrawn. Every segment is a share of what was escrowed, so the bar always
  * accounts for the whole commitment and nothing else.
  */
 function BookBar({

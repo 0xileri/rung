@@ -18,7 +18,7 @@ import {
   type PositionPnlView,
 } from '../lib/pnl';
 import { usePriceBook } from '../lib/use-price-book';
-import { dateTime, daysUntil, explorer, fromQuote, shortKey, signedUsd, usd, valuation } from '../lib/format';
+import { dateTime, explorer, fromQuote, shortKey, signedUsd, timeUntil, usd, valuation } from '../lib/format';
 import { PositionActions } from './PositionActions';
 
 /**
@@ -234,7 +234,7 @@ export function PositionList() {
               <span style={{ flexGrow: 1 }} />
               {!settled && (
                 <span style={{ fontSize: 12, color: pastExpiry ? 'var(--caution)' : 'var(--text-faint)' }}>
-                  {pastExpiry ? 'Past expiry, ready to settle' : `${daysUntil(p.expiryTs)}d to expiry`}
+                  {pastExpiry ? 'Past expiry, ready to settle' : `${timeUntil(p.expiryTs)} to expiry`}
                 </span>
               )}
             </header>

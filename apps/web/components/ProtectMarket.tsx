@@ -20,7 +20,7 @@ import {
 } from '../lib/program';
 import { fetchPositions, toOpenCommitments, CLUSTER, type Position } from '../lib/chain';
 import { quoteFill, fillRejection } from '../../../packages/sdk/src/fills.ts';
-import { band, daysUntil, explorer, fromQuote, shortKey, toQuote, usd } from '../lib/format';
+import { band, explorer, fromQuote, shortKey, timeUntil, toQuote, usd } from '../lib/format';
 import { SweepPanel } from './SweepPanel';
 
 /**
@@ -325,7 +325,7 @@ export function ProtectMarket({
                 <div>
                   <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 3 }}>Deadline</div>
                   <div className="fig" style={{ fontSize: 20 }}>
-                    {daysUntil(p.expiryTs)}d
+                    {timeUntil(p.expiryTs)}
                   </div>
                 </div>
                 <div style={{ flexGrow: 1 }} />

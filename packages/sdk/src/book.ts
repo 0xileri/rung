@@ -46,8 +46,13 @@ export type BookLine = {
   fills: BookFill[];
   /** Everything holders have ever claimed from this commitment. */
   taken: bigint;
-  /** Claimed and not yet settled: capital still at risk. */
+  /** Claimed and still running: capital at risk until the deadline. */
   live: bigint;
+  /**
+   * Claimed, past the deadline and not yet settled. No longer at risk -- the holder can no
+   * longer exercise -- just waiting for anyone to send it home.
+   */
+  due: bigint;
   /** Still on offer. */
   open: bigint;
   /** Offered once, then withdrawn by the maker. */
@@ -68,9 +73,10 @@ export type BookLine = {
 export type BookSummary = {
   commitments: number;
   active: number;
-  /** Capital on the book right now: still offered plus still at risk. */
+  /** Capital in escrow right now: still offered, still at risk, or waiting to come home. */
   onBook: bigint;
   live: bigint;
+  due: bigint;
   open: bigint;
   taken: bigint;
   premiumNet: bigint;
@@ -92,18 +98,22 @@ export function bookLine(commitment: BookCommitment, fills: BookFill[], now: num
     .filter((f) => f.position === commitment.position)
     .sort((a, b) => a.index - b.index);
   const taken = sum(mine.map((f) => f.strikeQuoteAmount));
-  const live = sum(mine.filter((f) => f.status === 'Matched').map((f) => f.strikeQuoteAmount));
+  const unsettled = mine.filter((f) => f.status === 'Matched');
+  const unsettledQuote = sum(unsettled.map((f) => f.strikeQuoteAmount));
   const open = commitment.strikeQuoteOpen;
   // What was escrowed and is neither claimed nor still offered can only have been withdrawn.
   const withdrawn = commitment.strikeQuoteEscrowed - taken - open;
+  // The program refuses an exercise after the deadline, so an unsettled claim past it is no
+  // longer running: it is owed back, and anyone may settle it.
   const expired = now > commitment.expiryTs;
-  const settleable = expired ? mine.filter((f) => f.status === 'Matched') : [];
+  const settleable = expired ? unsettled : [];
 
   return {
     commitment,
     fills: mine,
     taken,
-    live,
+    live: expired ? 0n : unsettledQuote,
+    due: expired ? unsettledQuote : 0n,
     open,
     withdrawn: withdrawn > 0n ? withdrawn : 0n,
     premiumNet: sum(mine.map((f) => f.premiumPaid - f.feePaid)),
@@ -111,7 +121,7 @@ export function bookLine(commitment: BookCommitment, fills: BookFill[], now: num
     exercisedQuote: sum(mine.filter((f) => f.status === 'Exercised').map((f) => f.strikeQuoteAmount)),
     expired,
     settleable,
-    active: open > 0n || live > 0n,
+    active: open > 0n || unsettledQuote > 0n,
   };
 }
 
@@ -135,6 +145,7 @@ export function summarizeBook(lines: BookLine[]): BookSummary {
   const taken = sum(lines.map((l) => l.taken));
   const premiumNet = sum(lines.map((l) => l.premiumNet));
   const live = sum(lines.map((l) => l.live));
+  const due = sum(lines.map((l) => l.due));
   const open = sum(lines.map((l) => l.open));
 
   // Each fill's term runs from its own match to the commitment's deadline, weighted by how
@@ -157,8 +168,9 @@ export function summarizeBook(lines: BookLine[]): BookSummary {
   return {
     commitments: lines.length,
     active: lines.filter((l) => l.active).length,
-    onBook: live + open,
+    onBook: live + due + open,
     live,
+    due,
     open,
     taken,
     premiumNet,

@@ -84,6 +84,23 @@ test('expired claims nobody has settled are listed for settling', () => {
   assert.equal(bookLine(commitment(), fills, NOW).settleable.length, 0, 'nothing is settleable before the deadline');
 });
 
+test('an unsettled claim past its deadline is due back, not running', () => {
+  const late = NOW + 31 * DAY;
+  const fills = [fill({ strikeQuoteAmount: usd(20) }), fill({ status: 'Exercised' })];
+  const before = bookLine(commitment({ strikeQuoteOpen: 0n }), fills, NOW);
+  assert.equal(before.live, usd(20));
+  assert.equal(before.due, 0n);
+  const after = bookLine(commitment({ strikeQuoteOpen: 0n }), fills, late);
+  assert.equal(after.live, 0n, 'the holder can no longer exercise it');
+  assert.equal(after.due, usd(20));
+  assert.equal(after.active, true, 'it still has to be settled');
+  const s = summarizeBook([after]);
+  assert.equal(s.live, 0n);
+  assert.equal(s.due, usd(20));
+  assert.equal(s.onBook, usd(20), 'still in escrow until someone settles it');
+  assert.equal(s.nextExpiry, null, 'a passed deadline is not the next one');
+});
+
 test('a book lists active lines first, soonest deadline first', () => {
   const soon = commitment({ position: 'SOON', expiryTs: NOW + 3 * DAY });
   const later = commitment({ position: 'LATER', expiryTs: NOW + 20 * DAY });
@@ -105,6 +122,7 @@ test('the summary adds up, and yield is premium over capital matched', () => {
   assert.equal(s.commitments, 2);
   assert.equal(s.taken, usd(80));
   assert.equal(s.live, usd(40), 'the exercised claim is no longer at risk');
+  assert.equal(s.due, 0n);
   assert.equal(s.open, usd(120));
   assert.equal(s.onBook, usd(160));
   assert.equal(s.premiumNet, usd(3.96));

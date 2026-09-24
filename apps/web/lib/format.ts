@@ -68,8 +68,15 @@ export function dateTime(unixSeconds: number): string {
   });
 }
 
-export function daysUntil(unixSeconds: number): number {
-  return Math.max(0, Math.ceil((unixSeconds - Date.now() / 1000) / 86400));
+/**
+ * Time left until a deadline, in the largest unit it fills: "30d", "5h", "4m". Rounded up, so
+ * a deadline still to come never reads as zero; whole days alone would call five minutes "1d".
+ */
+export function timeUntil(unixSeconds: number): string {
+  const secs = Math.max(0, unixSeconds - Date.now() / 1000);
+  if (secs >= 86_400) return `${Math.ceil(secs / 86_400)}d`;
+  if (secs >= 3_600) return `${Math.ceil(secs / 3_600)}h`;
+  return `${Math.ceil(secs / 60)}m`;
 }
 
 export function explorer(kind: 'address' | 'tx', id: string, cluster: string): string {
