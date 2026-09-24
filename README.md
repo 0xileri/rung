@@ -183,7 +183,7 @@ carries its own commands (the site: `npm run build`, `npm start`, health check o
 |---|---|
 | Source | this repository, branch `feat/partial-fills` |
 | Build command | a no-op: the keeper runs as TypeScript directly on Node 24 |
-| Start command | `node scripts/keeper.ts --once` |
+| Start command | `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/keeper.ts --once` |
 | Cron schedule | `*/10 * * * *` |
 | Restart policy | never: the next pass is ten minutes away anyway |
 | Watch paths | `scripts/keeper.ts`, `packages/sdk/**`, `package.json`, `package-lock.json` |
