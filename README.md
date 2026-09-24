@@ -194,6 +194,18 @@ which would read the root `Cargo.toml` as a Rust project and ship an image witho
 A host has no key file to point at, so `KEEPER_SECRET_KEY` carries the key itself, as the
 keypair file's JSON array. It was set from stdin and appears nowhere in this repository.
 
+Claims last a month, so on an ordinary book the keeper has nothing to do for weeks. To watch
+it work, `scripts/keeper-demo.ts` puts one on devnet that is due in minutes:
+
+```bash
+node scripts/keeper-demo.ts <maker.json> <taker.json> --watch
+```
+
+The maker commits $20 at $1.00T on OPENAI and the taker takes all of it, with the deadline
+two minutes before a keeper pass, so the maker's book shows the claim waiting to settle before
+the keeper settles it. `--watch` then reports the settling transaction and who paid for it:
+the keeper's wallet, not either party's.
+
 ### A local stack
 
 Devnet is shared, so changes to the program are exercised here first:
