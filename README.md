@@ -173,6 +173,11 @@ because something changed under it, the claims are retried one at a time.
 `KEEPER_RPC_URL` and `KEEPER_KEYPAIR` in the environment. The keypair pays fees, plus rent
 if a recipient no longer has a token account to receive into.
 
+On devnet it runs as a Railway cron job (`railway.keeper.json`): one pass every ten minutes,
+paid for by a wallet of its own that holds devnet SOL and nothing else. A host has no key file
+to point at, so the service passes the key itself as `KEEPER_SECRET_KEY`; it is set on Railway
+from stdin and appears nowhere in this repository.
+
 ### A local stack
 
 Devnet is shared, so changes to the program are exercised here first:

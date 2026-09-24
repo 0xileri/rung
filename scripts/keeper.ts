@@ -28,6 +28,8 @@
  *   --rpc / KEEPER_RPC_URL (else DEVNET_RPC_URL from .env.local, else public devnet)
  *   --keypair / KEEPER_KEYPAIR (else ~/.config/solana/id.json) — pays fees and any rent for
  *   a recipient's missing token account; nothing else.
+ *   KEEPER_SECRET_KEY — the key itself, as the keypair file's JSON array, for a host with no
+ *   file to point at (the Railway cron in railway.keeper.json). A file named above wins.
  *   --limit N settlements per cycle (default 50)
  */
 import { existsSync, readFileSync } from 'node:fs';
@@ -70,7 +72,8 @@ function envFile(): Record<string, string> {
 }
 
 const RPC = flag('rpc') ?? process.env.KEEPER_RPC_URL ?? envFile().DEVNET_RPC_URL ?? 'https://api.devnet.solana.com';
-const KEYPAIR = flag('keypair') ?? process.env.KEEPER_KEYPAIR ?? `${process.env.HOME}/.config/solana/id.json`;
+const KEYPAIR = flag('keypair') ?? process.env.KEEPER_KEYPAIR;
+const SECRET_KEY = process.env.KEEPER_SECRET_KEY;
 const DRY_RUN = has('dry-run');
 const WATCH = has('watch') ? Number(flag('watch') ?? 60) : null;
 const LIMIT = Number(flag('limit') ?? 50);
@@ -94,7 +97,15 @@ const idl = JSON.parse(readFileSync('packages/sdk/idl/rung.json', 'utf8')) as Id
   accounts: { name: string; discriminator: number[] }[];
   types: { name: string; type: { kind: string; fields?: { name: string; type: unknown }[] } }[];
 };
-const keeper = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(KEYPAIR, 'utf8'))));
+const keeper = Keypair.fromSecretKey(
+  Uint8Array.from(
+    JSON.parse(
+      KEYPAIR
+        ? readFileSync(KEYPAIR, 'utf8')
+        : (SECRET_KEY ?? readFileSync(`${process.env.HOME}/.config/solana/id.json`, 'utf8')),
+    ),
+  ),
+);
 const connection = new Connection(RPC, 'confirmed');
 const program = new Program(idl, new AnchorProvider(connection, new Wallet(keeper), { commitment: 'confirmed' }));
 const coder = new BorshAccountsCoder(idl);
