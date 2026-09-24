@@ -19,6 +19,7 @@ import { matchedRowFor } from '../lib/holdings';
 import { pnlForPosition, priceBook, readMintScales, totalPnl, type MintScale } from '../lib/pnl';
 import { ActivityBand, type Activity } from '../components/ActivityBand';
 import { TryBothSides } from '../components/TryBothSides';
+import { LiquidityTools } from '../components/LiquidityTools';
 import { escrowTargetFor, LISTED_SYMBOLS } from '../lib/deployment';
 
 export const dynamic = 'force-dynamic';
@@ -263,6 +264,8 @@ export default async function Home() {
 
       <ActivityBand activity={activity} cluster={CLUSTER} />
 
+      {featured && <LiquidityTools symbol={LISTED_SYMBOLS[0] ?? featured.symbol} />}
+
       {CLUSTER !== 'mainnet-beta' && featured && <TryBothSides symbol={LISTED_SYMBOLS[0] ?? featured.symbol} />}
 
       <section className="wrap enter enter-delay-3" style={{ paddingBottom: 88 }}>
@@ -437,10 +440,10 @@ export default async function Home() {
           <div className="card tint-teal" style={{ padding: '28px 24px' }}>
             <div className="label" style={{ marginBottom: 10, color: 'var(--teal-ink)' }}>Protect</div>
             <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, letterSpacing: '-0.02em' }}>
-              Sell upside, keep a floor
+              Keep the upside, buy a floor
             </h3>
             <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>
-              Holders lock PreStocks, collect premium, and may exchange for the committed USDC
+              Holders lock PreStocks, pay a premium, and may exchange them for the committed USDC
               before expiry.
             </p>
           </div>
