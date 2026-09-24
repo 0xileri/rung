@@ -72,8 +72,9 @@ if [ "${STATUS:-0}" -eq 0 ]; then
   if [ -n "${CURRENT:-}" ]; then
     solana program upgrade "$BUFFER" "$PROGRAM_ID" --url "$RPC"
   else
-    # Fresh deploy from the pre-written buffer. Not yet exercised: devnet has only ever been
-    # upgraded through this script.
+    # Fresh deploy from the pre-written buffer. Exercised on devnet 2026-09-24 (BEEraLq…):
+    # the loader drains the buffer to the payer before charging for the program data, so the
+    # payer needs the program-data rent once, not on top of the buffer's.
     solana program deploy --buffer "$BUFFER" --program-id "$PROGRAM_KEYPAIR" --url "$RPC" \
       --use-rpc --with-compute-unit-price 50000
   fi

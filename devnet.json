@@ -1,14 +1,14 @@
 {
   "cluster": "devnet",
-  "note": "PreStocks exist only on mainnet. The stock mint below is a MOCK that reproduces the real OpenAI PreStock’s transfer fee and scaled-amount extensions. Valuation data remains live from the real PreStocks API.",
-  "programId": "6kqka5NWofo1cm6bm5JMhWbQgHeR6YT23qTvwnusSwpM",
-  "config": "81keCkSZRierBmcXgcNBqqNTfYszRDvvgviwg4YTg8jo",
+  "note": "The current Rung program, over the same mock mints as the Stocklana deployment (which still runs its own program, unchanged). PreStocks exist only on mainnet: every stock mint here is a MOCK that reproduces its real counterpart’s transfer fee and scaled-amount extensions. Valuation data remains live from the real PreStocks API.",
+  "programId": "BEEraLqHNJ8y8yTsXpDZsRAjwB9uKc3Awj1YBLZUKu2r",
+  "config": "EnW1LkKkaq1PdcKpHsSWs3BxvBnLPR2DEerc7XGnxtFa",
   "quoteMint": "CRUjjjByxTpUfeAhR377RTdpmravXXgSX6eTk93XxBov",
   "quoteDecimals": 6,
   "markets": {
     "OPENAI": {
       "mint": "3Q43N1W6s77VTn2g9Tzp56p6WshVBUzRWknQeh3TVwR6",
-      "market": "8igHstCvuXTDbP7aJKA2CDtLhejMA18aXMmDMwd1JDtD",
+      "market": "CpbNPFCuREREyVrWfVTnoHpixtUyaYEtWmf5yEhjZrx8",
       "decimals": 9,
       "multiplier": 1.4861347,
       "feeBps": 50,
@@ -16,7 +16,7 @@
     },
     "SPACEX": {
       "mint": "3NS9XJR5GbNo6XGQhZBVgCDtfiPY6T1DjcDjX4rrgfZD",
-      "market": "9wCPPbEj2JarSfXhNnHmZ49iRrwP3iJo6cRtMMMyqHVC",
+      "market": "2tkjQPB19bwMfNw5CHPXwLiZcfA5cFaNqTDfdPBLW4Gy",
       "decimals": 9,
       "multiplier": 5,
       "feeBps": 100,
@@ -24,7 +24,7 @@
     },
     "ANDURIL": {
       "mint": "BJyL2P1v4kENE3uHCkxRuxAG3Qjv5KaLMTQVwqJDYfjf",
-      "market": "996igeohhSof5hYDENavXJEBzYkCr7FgAVhoBT17hsS5",
+      "market": "82QCqtUtThP74P6hywa7BDbZCoKcieMEbotxCLgp6dCv",
       "decimals": 9,
       "multiplier": 1,
       "feeBps": 100,
@@ -32,7 +32,7 @@
     },
     "ANTHROPIC": {
       "mint": "GzN2PPFzagbixukwGL5kLUo2F1k1t7EVa8spaicYQUn1",
-      "market": "31ZDAvmu9qU5AosXWVo4UU9KH1e1kXWAevwcgsoFBceX",
+      "market": "BibrhXzFc1Q6aGR2Vws4NQJRVYWTtjGsw5MRbRZLK9f3",
       "decimals": 9,
       "multiplier": 1,
       "feeBps": 100,
@@ -40,7 +40,7 @@
     },
     "FIGUREAI": {
       "mint": "8TCxonhUAPsPG7AJyzuQzZfa43jGXVgeoMgN7xQq3SGg",
-      "market": "EWqjJRazJGYYhJcBowwLHCFu3X8f91XHyYHqzATXTU3q",
+      "market": "89hm19G9kSFnj7x1m9v4D7emyQyUctwftdfSf66jE9HX",
       "decimals": 9,
       "multiplier": 1,
       "feeBps": 100,
@@ -48,7 +48,7 @@
     },
     "KALSHI": {
       "mint": "DqX88Z5P39MRAeFrFsEucAc5CfLTHJgaKA6CKLcDLwkG",
-      "market": "WvCgNQkENYeD5FvTEqUF2ADbfuCQ7hcW8fxFCBPjM7r",
+      "market": "B19ioktTYwoKYJEexe4nehGY8aG9FferaUNVm5ETivtW",
       "decimals": 9,
       "multiplier": 1,
       "feeBps": 100,
@@ -56,7 +56,7 @@
     },
     "NEURALINK": {
       "mint": "BZC1uGbbwXof8HW8CALPvwjvGTr8WqtArCcs8df4sxqd",
-      "market": "9KGfaozx5cVgmNTp2TiJjm4jp6Dby5TpXiKZUwtR9gR4",
+      "market": "2iw7r7Wi7QVQ6zxqh4vqfGTDHv16q8Kq8SGed6XZJBww",
       "decimals": 9,
       "multiplier": 1,
       "feeBps": 100,
@@ -64,12 +64,16 @@
     },
     "POLYMARKET": {
       "mint": "4PLS8fCUi5xgREWbVUCByPBUyCQHX6ANVJLauituRtQK",
-      "market": "CY6cnY73b6WhC2Dvz3aNzpMLUTUmRLjQ2yAsdC7A7AdS",
+      "market": "3ZcoV7BX2iACaR9vYptZ4TLUWNyTKt6kKfrpEFWZhYTw",
       "decimals": 9,
       "multiplier": 1,
       "feeBps": 100,
       "mock": true
     }
   },
-  "createdAt": "2026-09-20T14:06:57.071Z"
+  "createdAt": "2026-09-20T14:06:57.071Z",
+  "adoptedFrom": {
+    "file": "devnet.json",
+    "at": "2026-09-24T12:29:05.790Z"
+  }
 }
