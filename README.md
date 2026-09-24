@@ -136,8 +136,8 @@ absent counterparty can trap collateral that is owed back.
 
 ```bash
 npm install
-npm run test:sdk                      # 82 tests, no chain needed
-bash scripts/wsl/test-local.sh        # 36 tests against a local validator
+npm run test:sdk                      # 91 tests, no chain needed
+bash scripts/wsl/test-local.sh        # 37 tests against a local validator, one of them a random walk
 bash scripts/wsl/fork-test.sh         # every instruction against the REAL mints, on a mainnet fork
 node scripts/devnet-smoke.ts          # every instruction and guardrail against the live devnet deployment
 node scripts/verify-chain.ts          # re-check the mint against live mainnet
@@ -192,10 +192,12 @@ is tested against.
 
 **Live:** https://rung.up.railway.app
 
-- Program: **36/36** tests — full lifecycle, partial fills, both settlement paths, every refusal in the
-  state machine, and the launch guardrails below
-- Mainnet fork: **26/26** checks against the real OpenAI and SpaceX mints
-- SDK: **82/82** tests, pinned against live mainnet values
+- Program: **37/37** tests — full lifecycle, partial fills, both settlement paths, every refusal in the
+  state machine, and the launch guardrails below. One of them is a seeded random walk of takes, refused sizes, exercises,
+  withdrawals and expiries that checks every vault is exactly balanced after every step
+  (`FUZZ_SEED=<n>` replays a run)
+- Mainnet fork: **33/33** checks against the real OpenAI and SpaceX mints, including partial fills and the protocol fee
+- SDK: **91/91** tests, pinned against live mainnet values
 - Every instruction has a UI: commit, take the other side, exercise, cancel, settle expiry
 
 ### Launch guardrails
@@ -250,7 +252,7 @@ need real PreStocks and USDC.
 What has been verified against mainnet itself:
 
 - **The real mints.** `scripts/wsl/fork-test.sh` runs every instruction against the live
-  OpenAI and SpaceX mint accounts on a local fork (26/26 checks), covering the extensions the
+  OpenAI and SpaceX mint accounts on a local fork (33/33 checks), covering the extensions the
   devnet mock lacks and SpaceX's 5x multiplier.
 - **Listing.** `node scripts/setup-mainnet.ts --dry-run` reads all 8 live PreStocks mints
   and confirms each one can be listed against real USDC.

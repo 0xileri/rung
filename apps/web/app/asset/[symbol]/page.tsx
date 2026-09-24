@@ -6,6 +6,7 @@ import { AssetSwitcher } from '../../../components/AssetSwitcher';
 import { toOpenCommitments, CLUSTER } from '../../../lib/chain';
 import { getPositionsCached } from '../../../lib/positions-cache';
 import { CapitalCharts } from '../../../components/CapitalCharts';
+import { LadderPanel } from '../../../components/LadderPanel';
 import { capitalPointsUsd } from '../../../lib/capital-view';
 import { buildCurve } from '../../../../../packages/sdk/src/commitment-curve.ts';
 import { valuationBands, relativeTo, bandAnchor } from '../../../../../packages/sdk/src/valuation.ts';
@@ -319,6 +320,19 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
           <CommitPanel
+            symbol={asset.symbol}
+            stockMint={escrow.mint}
+            markPrice={asset.markPrice}
+            markValuation={asset.markValuation}
+            impliedValuation={asset.impliedValuation}
+            decimals={decimals}
+            multiplier={multiplier}
+            feeBps={feeBps}
+            bands={bands}
+            disabled={!feedConsistent || notListed || liveMintMissing || hookSet}
+          />
+
+          <LadderPanel
             symbol={asset.symbol}
             stockMint={escrow.mint}
             markPrice={asset.markPrice}
