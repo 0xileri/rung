@@ -29,7 +29,7 @@
  *   --keypair / KEEPER_KEYPAIR (else ~/.config/solana/id.json) — pays fees and any rent for
  *   a recipient's missing token account; nothing else.
  *   KEEPER_SECRET_KEY — the key itself, as the keypair file's JSON array, for a host with no
- *   file to point at (the Railway cron in railway.keeper.json). A file named above wins.
+ *   file to point at (the Railway cron job; see the README). A file named above wins.
  *   --limit N settlements per cycle (default 50)
  */
 import { existsSync, readFileSync } from 'node:fs';

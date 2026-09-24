@@ -173,10 +173,22 @@ because something changed under it, the claims are retried one at a time.
 `KEEPER_RPC_URL` and `KEEPER_KEYPAIR` in the environment. The keypair pays fees, plus rent
 if a recipient no longer has a token account to receive into.
 
-On devnet it runs as a Railway cron job (`railway.keeper.json`): one pass every ten minutes,
-paid for by a wallet of its own that holds devnet SOL and nothing else. A host has no key file
-to point at, so the service passes the key itself as `KEEPER_SECRET_KEY`; it is set on Railway
-from stdin and appears nowhere in this repository.
+On devnet it runs as a Railway cron job: one pass every ten minutes, paid for by a wallet of
+its own that holds devnet SOL and nothing else. Railway no longer lets a new service read its
+settings from a file in the repository, so the `keeper` service carries them itself:
+
+| Setting | Value |
+|---|---|
+| Source | this repository, branch `feat/partial-fills` |
+| Build command | a no-op: the keeper runs as TypeScript directly on Node 24 |
+| Start command | `node scripts/keeper.ts --once` |
+| Cron schedule | `*/10 * * * *` |
+| Restart policy | never: the next pass is ten minutes away anyway |
+| Watch paths | `scripts/keeper.ts`, `packages/sdk/**`, `package.json`, `package-lock.json` |
+| Variables | `KEEPER_RPC_URL`, `NPM_CONFIG_PRODUCTION=false`, `KEEPER_SECRET_KEY` |
+
+A host has no key file to point at, so `KEEPER_SECRET_KEY` carries the key itself, as the
+keypair file's JSON array. It was set from stdin and appears nowhere in this repository.
 
 ### A local stack
 
