@@ -177,7 +177,9 @@ On devnet it runs as a Railway cron job: one pass every ten minutes, paid for by
 its own that holds devnet SOL and nothing else. Railway applies the root `railway.json` to every
 service built from this repository, so on this branch it only picks the builder; each service
 carries its own commands (the site: `npm run build`, `npm start`, health check on `/`). The
-`keeper` service's settings:
+`keeper` service's settings. A redeploy from the dashboard builds with Railpack instead,
+which would read the root `Cargo.toml` as a Rust project and ship an image without Node, so
+`railpack.json` pins its provider to Node and either builder produces a working image.
 
 | Setting | Value |
 |---|---|
@@ -186,7 +188,7 @@ carries its own commands (the site: `npm run build`, `npm start`, health check o
 | Start command | `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/keeper.ts --once` |
 | Cron schedule | `*/10 * * * *` |
 | Restart policy | never: the next pass is ten minutes away anyway |
-| Watch paths | `scripts/keeper.ts`, `packages/sdk/**`, `package.json`, `package-lock.json` |
+| Watch paths | `scripts/keeper.ts`, `packages/sdk/**`, `package.json`, `package-lock.json`, `railway.json`, `railpack.json` |
 | Variables | `KEEPER_RPC_URL`, `NPM_CONFIG_PRODUCTION=false`, `KEEPER_SECRET_KEY` |
 
 A host has no key file to point at, so `KEEPER_SECRET_KEY` carries the key itself, as the
