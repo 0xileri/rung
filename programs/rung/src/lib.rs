@@ -33,7 +33,7 @@ pub mod utils;
 
 use instructions::*;
 
-declare_id!("6kqka5NWofo1cm6bm5JMhWbQgHeR6YT23qTvwnusSwpM");
+declare_id!("BEEraLqHNJ8y8yTsXpDZsRAjwB9uKc3Awj1YBLZUKu2r");
 
 #[program]
 pub mod rung {

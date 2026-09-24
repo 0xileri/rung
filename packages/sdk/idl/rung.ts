@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/rung.json`.
  */
 export type Rung = {
-  "address": "6kqka5NWofo1cm6bm5JMhWbQgHeR6YT23qTvwnusSwpM",
+  "address": "BEEraLqHNJ8y8yTsXpDZsRAjwB9uKc3Awj1YBLZUKu2r",
   "metadata": {
     "name": "rung",
     "version": "0.1.0",
