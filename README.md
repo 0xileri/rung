@@ -174,8 +174,10 @@ because something changed under it, the claims are retried one at a time.
 if a recipient no longer has a token account to receive into.
 
 On devnet it runs as a Railway cron job: one pass every ten minutes, paid for by a wallet of
-its own that holds devnet SOL and nothing else. Railway no longer lets a new service read its
-settings from a file in the repository, so the `keeper` service carries them itself:
+its own that holds devnet SOL and nothing else. Railway applies the root `railway.json` to every
+service built from this repository, so on this branch it only picks the builder; each service
+carries its own commands (the site: `npm run build`, `npm start`, health check on `/`). The
+`keeper` service's settings:
 
 | Setting | Value |
 |---|---|
