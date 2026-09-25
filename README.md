@@ -206,6 +206,21 @@ two minutes before a keeper pass, so the maker's book shows the claim waiting to
 the keeper settles it. `--watch` then reports the settling transaction and who paid for it:
 the keeper's wallet, not either party's.
 
+### A book with depth
+
+```bash
+node scripts/seed-depth.ts --dry-run   # the plan and its rent, sending nothing
+node scripts/seed-depth.ts             # lay it down; a re-run only fills gaps
+```
+
+One maker's floors on one market prove the mechanism but cannot show a sweep crossing
+different makers' floors or a curve whose concentration note means anything. `seed-depth.ts`
+puts floors on every listed market's curve bands, shared by five makers (the deployer and four
+demo wallets), sized to peak a little below the market, with premium falling as floors get
+deeper and terms of 21 to 60 days; a few have a slice already taken by one of two demo holders.
+Strikes and slices are quoted from live PreStocks marks exactly as the app quotes them. On
+devnet it placed 45 commitments ($8,140) and 9 slices for about 0.25 SOL of rent.
+
 ### A local stack
 
 Devnet is shared, so changes to the program are exercised here first:
