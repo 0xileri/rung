@@ -34,8 +34,10 @@ stepping out from the line where the asset currently trades.
 
 **Live on devnet:** https://web-colosseum-production.up.railway.app
 
-The devnet book is real capital in program vaults, not fixtures. It holds about fifty floors
-across all eight PreStocks from five makers, some of them already partly taken.
+The devnet book is on chain, not fixtures: about fifty floors across all eight PreStocks,
+escrowed in program vaults by five demo makers, some already partly taken. It is mock USDC,
+seeded by [`scripts/seed-depth.ts`](scripts/seed-depth.ts) so the sweep and the curve have
+depth to show; every escrow is real and every figure is read from chain.
 
 1. **Get tokens.** Switch Phantom to devnet, connect, and press **Get test tokens** for devnet
    SOL, mock USDC and a mock of every PreStock.
