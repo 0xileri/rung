@@ -122,34 +122,63 @@ export function rungFlows(program: Program, usdc: PublicKey, { maker, taker, cra
     return h;
   }
 
-  /** `as` overrides who takes the position, and with which USDC account, for refusal tests. */
-  const accept = (h: Handle, send: bigint, as?: { signer: Keypair; quoteAccount: PublicKey }) =>
-    program.methods
-      .acceptCommitment(new BN(send.toString()))
+  const fillPda = (position: PublicKey, index: number) =>
+    pda([Buffer.from('fill'), position.toBuffer(), new BN(index).toArrayLike(Buffer, 'le', 4)]);
+
+  /** The fee treasury the config currently points at, and its USDC account. */
+  async function feeAccounts() {
+    const config = await (program.account as any).globalConfig.fetch(configPda);
+    return { treasury: config.feeTreasury as PublicKey, account: usdcOf(config.feeTreasury as PublicKey) };
+  }
+
+  /**
+   * Take a commitment, whole by default.
+   *
+   * `fillStrike` takes a slice instead, and `as` overrides who takes it and with which USDC
+   * account, for refusal tests. Returns the fill: everything downstream settles against that.
+   */
+  const accept = async (
+    h: Handle,
+    send: bigint,
+    as?: { signer: Keypair; quoteAccount: PublicKey; fillStrike?: BN },
+  ) => {
+    const position = await (program.account as any).position.fetch(h.position);
+    const fill = fillPda(h.position, position.fillsCreated);
+    const fee = await feeAccounts();
+    await program.methods
+      .acceptCommitment(new BN(send.toString()), as?.fillStrike ?? position.strikeQuoteOpen)
       .accounts({
         taker: (as?.signer ?? taker).publicKey,
         config: configPda,
         market: marketPda(h.mint),
         position: h.position,
+        fill,
         positionAuthority: h.authority,
         stockMint: h.mint,
         quoteMint: usdc,
         takerStockAccount: stockOf(h.mint, (as?.signer ?? taker).publicKey),
         takerQuoteAccount: as?.quoteAccount ?? usdcOf(taker.publicKey),
         makerQuoteAccount: usdcOf(maker.publicKey),
+        feeTreasuryAccount: fee.account,
+        feeTreasury: fee.treasury,
         stockVault: h.stockVault,
         stockTokenProgram: TOKEN_2022_PROGRAM_ID,
         quoteTokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
       })
       .signers([as?.signer ?? taker])
       .rpc();
+    return fill;
+  };
 
-  const exercise = (h: Handle) =>
+  const exercise = (h: Handle, fill: PublicKey) =>
     program.methods
-      .exercisePosition()
+      .exerciseFill()
       .accounts({
         taker: taker.publicKey,
         position: h.position,
+        fill,
         positionAuthority: h.authority,
         maker: maker.publicKey,
         stockMint: h.mint,
@@ -181,12 +210,13 @@ export function rungFlows(program: Program, usdc: PublicKey, { maker, taker, cra
       .signers([maker])
       .rpc();
 
-  const expire = (h: Handle) =>
+  const expire = (h: Handle, fill: PublicKey) =>
     program.methods
-      .expirePosition()
+      .expireFill()
       .accounts({
         cranker: cranker.publicKey,
         position: h.position,
+        fill,
         maker: maker.publicKey,
         taker: taker.publicKey,
         positionAuthority: h.authority,
@@ -205,12 +235,15 @@ export function rungFlows(program: Program, usdc: PublicKey, { maker, taker, cra
       .rpc();
 
   /** Wait for the cluster's clock to pass the position's expiry, then crank it. */
-  async function expireWhenDue(h: Handle) {
+  async function expireWhenDue(h: Handle, fill: PublicKey) {
     await waitForClusterTime(h.expiryTs);
-    return expire(h);
+    return expire(h, fill);
   }
 
-  return { configPda, marketPda, balance, usdcOf, stockOf, clusterNow, create, accept, exercise, cancel, expire, expireWhenDue };
+  return {
+    configPda, marketPda, fillPda, feeAccounts, balance, usdcOf, stockOf, clusterNow,
+    create, accept, exercise, cancel, expire, expireWhenDue,
+  };
 }
 
 export function checker() {

@@ -4,9 +4,10 @@ import { pnlColor, type totalPnl } from '../lib/pnl';
 import { YourPnl } from './YourPnl';
 
 /**
- * "On chain now": protocol-wide figures for the landing page, each computed from Position
- * accounts rather than kept by the interface. The P&L pair is one number shown twice: every
- * position's two sides are exact opposites, so what makers are up, holders are down.
+ * "On chain now": protocol-wide figures for the landing page, each computed from chain
+ * accounts rather than kept by the interface. The P&L pair is two sums, not one number shown
+ * twice: they are exact opposites until a protocol fee is on, and then they differ by exactly
+ * the fees, which the holder paid and the maker never received.
  */
 
 export type Activity = {
@@ -14,8 +15,12 @@ export type Activity = {
   openCount: number;
   matchedCount: number;
   liveCount: number;
+  /** Premium that reached makers, after the protocol's cut. */
   premiumsUsd: number;
+  /** The protocol's cut of those premiums. */
+  feesUsd: number;
   makers: ReturnType<typeof totalPnl>;
+  holders: ReturnType<typeof totalPnl>;
   /** Set when the chain read failed and a recent cached one is shown instead. */
   staleSeconds?: number;
 };
@@ -65,17 +70,23 @@ export function ActivityBand({ activity, cluster }: { activity: Activity | null;
             tint="amber"
             label="Premiums paid to makers"
             value={usd(activity.premiumsUsd)}
-            note="on every matched position"
+            note={
+              activity.feesUsd > 0
+                ? `on every matched position, after ${usd(activity.feesUsd)} protocol fee`
+                : 'on every matched position'
+            }
           />
           <Stat
             label="Makers vs holders, net P&L"
             value={activity.makers.empty ? '—' : `Makers ${signedUsd(activity.makers.usd)}`}
             valueColor={activity.makers.empty ? undefined : pnlColor(activity.makers.usd)}
-            secondary={activity.makers.empty ? undefined : `Holders ${signedUsd(-activity.makers.usd)}`}
+            secondary={activity.holders.empty ? undefined : `Holders ${signedUsd(activity.holders.usd)}`}
             note={
               activity.makers.unpriced > 0
                 ? `${activity.makers.unpriced} position(s) without a live price`
-                : "at today's market price; one side's gain is the other's loss"
+                : activity.feesUsd > 0
+                  ? "at today's market price; they differ by the protocol fee"
+                  : "at today's market price; one side's gain is the other's loss"
             }
           />
         </div>

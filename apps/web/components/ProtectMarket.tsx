@@ -19,7 +19,9 @@ import {
   type ProtocolLoadResult,
 } from '../lib/program';
 import { fetchPositions, toOpenCommitments, CLUSTER, type Position } from '../lib/chain';
-import { band, daysUntil, explorer, fromQuote, shortKey, usd } from '../lib/format';
+import { quoteFill, fillRejection } from '../../../packages/sdk/src/fills.ts';
+import { band, explorer, fromQuote, shortKey, timeUntil, toQuote, usd } from '../lib/format';
+import { SweepPanel } from './SweepPanel';
 
 /**
  * The holder's side: buy a floor from someone who has committed capital at it.
@@ -30,6 +32,10 @@ import { band, daysUntil, explorer, fromQuote, shortKey, usd } from '../lib/form
  * clears if an epoch rollover flips the rate between loading this page and signing. Both
  * figures are shown, because a holder about to lock tokens should see the difference rather
  * than discover it in their wallet.
+ *
+ * A floor does not have to be taken whole. A holder sets how much of the maker's capital to
+ * claim, and everything else — tokens to lock, premium, exercise value — is that fraction of
+ * the maker's terms, quoted with the same arithmetic the program settles with.
  */
 
 type Phase =
@@ -61,6 +67,8 @@ export function ProtectMarket({
 
   const [positions, setPositions] = useState<Position[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  /** How much of each commitment to take, in USDC, as typed. Empty means "all of it". */
+  const [size, setSize] = useState<Record<string, string>>({});
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const [protocol, setProtocol] = useState<ProtocolLoadResult | 'loading'>('loading');
 
@@ -79,8 +87,10 @@ export function ProtectMarket({
 
   const load = useCallback(async () => {
     const result = await fetchPositions(connection);
+    // Anything with capital left on offer, including commitments other holders have already
+    // taken a slice of: what is left is still a floor someone can buy.
     setPositions(
-      result.ok ? result.positions.filter((p) => p.status === 'Open' && p.stockMint === stockMint) : [],
+      result.ok ? result.positions.filter((p) => p.strikeQuoteOpen > 0n && p.stockMint === stockMint) : [],
     );
   }, [connection, stockMint]);
 
@@ -101,6 +111,16 @@ export function ProtectMarket({
     };
   }, [connection, wallet.publicKey, stockMint]);
 
+  const amountFor = useCallback(
+    (p: Position) => {
+      const typed = size[p.pubkey]?.trim();
+      if (!typed) return p.strikeQuoteOpen;
+      const asked = toQuote(Number(typed));
+      return asked > p.strikeQuoteOpen ? p.strikeQuoteOpen : asked;
+    },
+    [size],
+  );
+
   const accept = useCallback(
     async (p: Position) => {
       if (!wallet.publicKey || !wallet.signTransaction) return;
@@ -115,13 +135,27 @@ export function ProtectMarket({
       try {
         setPhase({ kind: 'working', note: 'Building transaction' });
         const program = getProgram(connection, wallet as never);
-        const toSend = grossUpForRequired(p.stockRawRequired, worstFee);
+        // Take what is still open on this commitment: a slice of the maker's escrow, priced
+        // the way the program prices it, so the quote and the chain agree to the base unit.
+        const quote = quoteFill(
+          {
+            strikeQuoteEscrowed: p.strikeQuoteEscrowed,
+            strikeQuoteOpen: p.strikeQuoteOpen,
+            stockRawRequired: p.stockRawRequired,
+            premiumQuoteAmount: p.premiumQuoteAmount,
+          },
+          amountFor(p),
+          protocol.accounts.feeBps,
+        );
+        const toSend = grossUpForRequired(quote.stockRawRequired, worstFee);
         const ix = await buildAcceptCommitment(program, {
           taker: wallet.publicKey,
           position: new PublicKey(p.pubkey),
           maker: new PublicKey(p.maker),
           accounts: protocol.accounts,
           stockRawToSend: toSend,
+          fillStrikeQuote: quote.strikeQuote,
+          fillIndex: p.fillsCreated,
         });
 
         const tx = new Transaction().add(ix);
@@ -142,7 +176,7 @@ export function ProtectMarket({
         setPhase({ kind: 'error', message: explainError(err) });
       }
     },
-    [wallet, protocol, connection, worstFee, load],
+    [wallet, protocol, connection, worstFee, load, amountFor],
   );
 
   // Scaled by the multiplier: wallets display the UI amount, and a raw figure here would
@@ -214,15 +248,41 @@ export function ProtectMarket({
         </p>
       )}
 
+      {!disabledReason && (
+        <SweepPanel
+          symbol={symbol}
+          positions={positions}
+          accounts={protocol !== 'loading' && protocol.ok ? protocol.accounts : null}
+          worstFee={worstFee}
+          decimals={decimals}
+          multiplier={multiplier}
+          onDone={load}
+        />
+      )}
+
       {positions
         .slice()
         .sort((a, b) => b.targetValuationUsd - a.targetValuationUsd)
         .map((p) => {
           const isOpen = selected === p.pubkey;
-          const required = p.stockRawRequired;
+          const minFill = protocol !== 'loading' && protocol.ok ? protocol.accounts.minFillQuote : 0n;
+          const feeBps = protocol !== 'loading' && protocol.ok ? protocol.accounts.feeBps : 0;
+          const terms = {
+            strikeQuoteEscrowed: p.strikeQuoteEscrowed,
+            strikeQuoteOpen: p.strikeQuoteOpen,
+            stockRawRequired: p.stockRawRequired,
+            premiumQuoteAmount: p.premiumQuoteAmount,
+          };
+          const wanted = amountFor(p);
+          const rejection = fillRejection(terms, wanted, minFill);
+          // An invalid size still needs figures to render; quote the whole thing instead, and
+          // let the message below say why the button is off.
+          const quote = quoteFill(terms, rejection ? p.strikeQuoteOpen : wanted, feeBps);
+          const required = quote.stockRawRequired;
           const toSend = grossUpForRequired(required, worstFee);
           const arrives = amountReceived(toSend, worstFee);
           const overhead = ui(toSend) - ui(required);
+          const partial = p.strikeQuoteOpen < p.strikeQuoteEscrowed;
           const busy = phase.kind === 'working';
           const ownCommitment = wallet.publicKey?.toBase58() === p.maker;
 
@@ -245,22 +305,27 @@ export function ProtectMarket({
                 </div>
                 <div>
                   <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 3 }}>
-                    You receive if you exercise
+                    Available to take
                   </div>
                   <div className="fig" style={{ fontSize: 20 }}>
-                    {usd(fromQuote(p.strikeQuoteEscrowed))}
+                    {usd(fromQuote(p.strikeQuoteOpen))}
                   </div>
+                  {partial && (
+                    <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>
+                      of {usd(fromQuote(p.strikeQuoteEscrowed))} committed
+                    </div>
+                  )}
                 </div>
                 <div>
                   <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 3 }}>Premium you pay</div>
                   <div className="fig" style={{ fontSize: 20, color: 'var(--amber-ink)' }}>
-                    {usd(fromQuote(p.premiumQuoteAmount))}
+                    {usd(fromQuote(quote.premiumQuote))}
                   </div>
                 </div>
                 <div>
                   <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 3 }}>Deadline</div>
                   <div className="fig" style={{ fontSize: 20 }}>
-                    {daysUntil(p.expiryTs)}d
+                    {timeUntil(p.expiryTs)}
                   </div>
                 </div>
                 <div style={{ flexGrow: 1 }} />
@@ -285,11 +350,56 @@ export function ProtectMarket({
                     Protection check
                   </div>
 
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+                    <label style={{ fontSize: 12, color: 'var(--text-muted)' }} htmlFor={`size-${p.pubkey}`}>
+                      How much to take
+                    </label>
+                    <input
+                      id={`size-${p.pubkey}`}
+                      className="fig"
+                      inputMode="decimal"
+                      value={size[p.pubkey] ?? fromQuote(p.strikeQuoteOpen).toString()}
+                      onChange={(e) => setSize((prev) => ({ ...prev, [p.pubkey]: e.target.value }))}
+                      style={{
+                        width: 120,
+                        padding: '6px 10px',
+                        border: '1px solid var(--line)',
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'var(--surface)',
+                        color: 'var(--text)',
+                        fontSize: 14,
+                      }}
+                    />
+                    <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>USDC</span>
+                    <button
+                      type="button"
+                      className="btn btn-quiet"
+                      style={{ padding: '4px 10px', fontSize: 12 }}
+                      onClick={() =>
+                        setSize((prev) => ({ ...prev, [p.pubkey]: fromQuote(p.strikeQuoteOpen).toString() }))
+                      }
+                    >
+                      All of it
+                    </button>
+                  </div>
+
+                  {rejection && (
+                    <p className="callout callout-caution" style={{ margin: '0 0 14px' }}>
+                      {rejection === 'below-minimum'
+                        ? `The smallest slice is ${usd(fromQuote(minFill))}. Take at least that, or take all ${usd(fromQuote(p.strikeQuoteOpen))}.`
+                        : rejection === 'leaves-dust'
+                          ? `That would leave less than ${usd(fromQuote(minFill))} behind, too little for anyone else to take. Take a little less, or take all of it.`
+                          : rejection === 'exceeds-open'
+                            ? `Only ${usd(fromQuote(p.strikeQuoteOpen))} is still open on this commitment.`
+                            : 'Enter how much of this commitment to take.'}
+                    </p>
+                  )}
+
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
                     <Row label={`You lock`} value={`${ui(toSend).toFixed(8)} ${symbol}`} />
                     <Row label="Reaches the vault" value={`${ui(arrives).toFixed(8)} ${symbol}`} />
-                    <Row label="You pay" value={`${usd(fromQuote(p.premiumQuoteAmount))} premium`} accent />
-                    <Row label="Your exercise value" value={usd(fromQuote(p.strikeQuoteEscrowed))} />
+                    <Row label="You pay" value={`${usd(fromQuote(quote.premiumQuote))} premium`} accent />
+                    <Row label="Your exercise value" value={usd(fromQuote(quote.strikeQuote))} />
                     <Row
                       label="Exercise deadline"
                       value={new Date(p.expiryTs * 1000).toLocaleDateString(undefined, {
@@ -339,10 +449,12 @@ export function ProtectMarket({
                       type="button"
                       className="btn"
                       style={{ width: '100%' }}
-                      disabled={busy}
+                      disabled={busy || !!rejection}
                       onClick={() => accept(p)}
                     >
-                      {busy ? `${phase.note}…` : `Buy protection — pay ${usd(fromQuote(p.premiumQuoteAmount))}`}
+                      {busy
+                        ? `${phase.note}…`
+                        : `Buy protection on ${usd(fromQuote(quote.strikeQuote))} — pay ${usd(fromQuote(quote.premiumQuote))}`}
                     </button>
                   )}
                 </div>

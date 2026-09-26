@@ -5,9 +5,12 @@ import { CommitPanel } from '../../../components/CommitPanel';
 import { AssetSwitcher } from '../../../components/AssetSwitcher';
 import { toOpenCommitments, CLUSTER } from '../../../lib/chain';
 import { getPositionsCached } from '../../../lib/positions-cache';
+import { CapitalCharts } from '../../../components/CapitalCharts';
+import { LadderPanel } from '../../../components/LadderPanel';
+import { capitalPointsUsd } from '../../../lib/capital-view';
 import { buildCurve } from '../../../../../packages/sdk/src/commitment-curve.ts';
 import { valuationBands, relativeTo, bandAnchor } from '../../../../../packages/sdk/src/valuation.ts';
-import { band, daysUntil, explorer, pct, shortKey, usd, fromQuote, valuation } from '../../../lib/format';
+import { band, explorer, pct, shortKey, timeUntil, usd, fromQuote, valuation } from '../../../lib/format';
 import { getPreStocks, findAsset, getMintState } from '../../../lib/prestocks-cache';
 import { escrowTargetFor, LISTED_SYMBOLS } from '../../../lib/deployment';
 import { custodyCaveats } from '../../../../../packages/sdk/src/prestocks.ts';
@@ -93,6 +96,10 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
 
   const fetched = await getPositionsCached();
   const open = fetched.ok ? toOpenCommitments(fetched.positions, escrow.mint) : [];
+  const capital = fetched.ok
+    ? capitalPointsUsd(fetched.positions, fetched.fills, Math.floor(Date.now() / 1000), (p) => p.stockMint === escrow.mint)
+    : [];
+  const displayName = asset.name.replace(/ PreStocks$/i, '');
   // An unreadable chain must not render as an empty market: that reads as "nobody has
   // committed", which is a claim about the world rather than about the RPC.
   const chainNote = !fetched.ok
@@ -232,6 +239,7 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
             </p>
           )}
           {fetched.ok && <CommitmentCurve buckets={curve} marketValuationUsd={asset.impliedValuation} />}
+          {fetched.ok && capital.length > 1 && <CapitalCharts points={capital} scope={displayName} />}
 
           <section className="card" style={{ padding: '26px 28px' }}>
             <div
@@ -291,7 +299,7 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
                           {usd(premium)} premium
                         </span>
                         <span style={{ fontSize: 13, color: 'var(--text-muted)', flexGrow: 1 }}>
-                          {daysUntil(c.expiryTs)}d to expiry
+                          {timeUntil(c.expiryTs)} to expiry
                         </span>
                         <a
                           className="fig"
@@ -312,6 +320,19 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
           <CommitPanel
+            symbol={asset.symbol}
+            stockMint={escrow.mint}
+            markPrice={asset.markPrice}
+            markValuation={asset.markValuation}
+            impliedValuation={asset.impliedValuation}
+            decimals={decimals}
+            multiplier={multiplier}
+            feeBps={feeBps}
+            bands={bands}
+            disabled={!feedConsistent || notListed || liveMintMissing || hookSet}
+          />
+
+          <LadderPanel
             symbol={asset.symbol}
             stockMint={escrow.mint}
             markPrice={asset.markPrice}

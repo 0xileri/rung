@@ -83,7 +83,7 @@ async function main() {
   const h = await rung.create(mint, q.rawQuantity, usd(10), usd(0.5), 3600, target);
   check((await rung.balance(h.quoteVault, TOKEN_PROGRAM_ID)) === 10_000_000n, 'create escrows exactly $10 of mock USDC');
   const makerUsdc0 = await rung.balance(rung.usdcOf(deployer.publicKey), TOKEN_PROGRAM_ID);
-  await rung.accept(h, send);
+  const fill = await rung.accept(h, send);
   const escrowed = BigInt((await program.account.position.fetch(h.position)).stockRawEscrowed.toString());
   check(escrowed === (await rung.balance(h.stockVault, TOKEN_2022_PROGRAM_ID)), 'accept records the vault\'s real balance');
   check(escrowed >= q.rawQuantity, 'escrow clears the required quantity after the mock fee');
@@ -91,7 +91,7 @@ async function main() {
   check((await rung.balance(rung.usdcOf(deployer.publicKey), TOKEN_PROGRAM_ID)) - makerUsdc0 === 500_000n, 'maker is paid the premium on match');
   const takerUsdc0 = await rung.balance(takerUsdc, TOKEN_PROGRAM_ID);
   const makerStock0 = await rung.balance(rung.stockOf(mint, deployer.publicKey), TOKEN_2022_PROGRAM_ID);
-  await rung.exercise(h);
+  await rung.exercise(h, fill);
   check((await rung.balance(takerUsdc, TOKEN_PROGRAM_ID)) - takerUsdc0 === 10_000_000n, 'exercise pays the holder the full $10');
   check(
     (await rung.balance(rung.stockOf(mint, deployer.publicKey), TOKEN_2022_PROGRAM_ID)) - makerStock0 === amountReceived(escrowed, state.transferFee),
@@ -126,12 +126,12 @@ async function main() {
 
   console.log('\nCreate -> accept -> expire, cranked by an uninvolved wallet');
   const e = await rung.create(mint, q.rawQuantity, usd(10), usd(0.5), 62, target);
-  await rung.accept(e, send);
+  const expiringFill = await rung.accept(e, send);
   const eEscrowed = BigInt((await program.account.position.fetch(e.position)).stockRawEscrowed.toString());
   const takerStock0 = await rung.balance(takerStock, TOKEN_2022_PROGRAM_ID);
   const makerUsdcE = await rung.balance(rung.usdcOf(deployer.publicKey), TOKEN_PROGRAM_ID);
   console.log('  waiting for the 62s expiry on the cluster clock…');
-  await rung.expireWhenDue(e);
+  await rung.expireWhenDue(e, expiringFill);
   check((await rung.balance(takerStock, TOKEN_2022_PROGRAM_ID)) - takerStock0 === amountReceived(eEscrowed, state.transferFee), 'expire returns the holder their stock, net of the exit fee');
   check((await rung.balance(rung.usdcOf(deployer.publicKey), TOKEN_PROGRAM_ID)) - makerUsdcE === 10_000_000n, 'expire returns the maker their $10');
 

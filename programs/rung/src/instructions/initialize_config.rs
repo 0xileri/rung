@@ -31,5 +31,10 @@ pub fn initialize_config(ctx: Context<InitializeConfig>) -> Result<()> {
     config.quote_token_program = ctx.accounts.quote_token_program.key();
     config.paused = false;
     config.bump = ctx.bumps.config;
+    // No fee and no minimum until an admin sets them: a protocol that starts charging before
+    // anyone has agreed a rate is not a protocol anyone should have to read the code to trust.
+    config.fee_bps = 0;
+    config.fee_treasury = ctx.accounts.admin.key();
+    config.min_fill_quote = 0;
     Ok(())
 }

@@ -12,6 +12,17 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["node_modules/next/dist/bin/next", "dev", "apps/web", "-p", "3001"],
       "port": 3001
+    },
+    {
+      "name": "rung-web-local-chain",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["node_modules/next/dist/bin/next", "dev", "apps/web", "-p", "3002"],
+      "port": 3002,
+      "env": {
+        "NEXT_PUBLIC_CLUSTER": "localnet",
+        "NEXT_PUBLIC_SOLANA_RPC_URL": "http://127.0.0.1:8899",
+        "SOLANA_SERVER_RPC_URL": "http://127.0.0.1:8899"
+      }
     }
   ]
 }

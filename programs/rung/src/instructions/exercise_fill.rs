@@ -4,11 +4,11 @@ use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use crate::constants::*;
 use crate::errors::RungError;
-use crate::state::{Position, PositionExercised, PositionStatus};
+use crate::state::{Fill, FillStatus, Position, PositionExercised};
 use crate::utils::transfer_tokens;
 
 #[derive(Accounts)]
-pub struct ExercisePosition<'info> {
+pub struct ExerciseFill<'info> {
     #[account(mut)]
     pub taker: Signer<'info>,
 
@@ -16,11 +16,21 @@ pub struct ExercisePosition<'info> {
         mut,
         seeds = [POSITION_SEED, position.maker.as_ref(), &position.nonce.to_le_bytes()],
         bump = position.bump,
-        has_one = taker @ RungError::Unauthorized,
         has_one = stock_mint @ RungError::InvalidStockMint,
         has_one = quote_mint @ RungError::InvalidQuoteMint,
     )]
     pub position: Box<Account<'info, Position>>,
+
+    /// Left in place once settled, as the record that this holder held this protection and
+    /// how it ended. `close_fill` returns its rent whenever the taker asks.
+    #[account(
+        mut,
+        seeds = [FILL_SEED, position.key().as_ref(), &fill.index.to_le_bytes()],
+        bump = fill.bump,
+        has_one = position @ RungError::InvalidState,
+        has_one = taker @ RungError::Unauthorized,
+    )]
+    pub fill: Box<Account<'info, Fill>>,
 
     /// CHECK: Vault authority PDA, validated by seeds.
     #[account(
@@ -77,7 +87,7 @@ pub struct ExercisePosition<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Exchange the escrowed stock for the escrowed USDC, atomically.
+/// Exchange this fill's escrowed stock for this fill's claim on the escrowed USDC, atomically.
 ///
 /// Note what this instruction does not consult: no oracle, no price feed, no backend
 /// authorization, and no market or pause flag. The holder bought a contractual right to
@@ -86,10 +96,12 @@ pub struct ExercisePosition<'info> {
 /// admin could block a settlement the counterparty already paid for.
 ///
 /// Both legs move in one instruction, so there is no intermediate state in which one side
-/// has been paid and the other has not.
-pub fn exercise_position(ctx: Context<ExercisePosition>) -> Result<()> {
+/// has been paid and the other has not. Fills sharing a vault stay independent: this pays
+/// only the amounts recorded on this fill, so one taker's exercise can never reach another's
+/// collateral.
+pub fn exercise_fill(ctx: Context<ExerciseFill>) -> Result<()> {
     require!(
-        ctx.accounts.position.status == PositionStatus::Matched,
+        ctx.accounts.fill.status == FillStatus::Matched,
         RungError::InvalidState
     );
 
@@ -99,9 +111,10 @@ pub fn exercise_position(ctx: Context<ExercisePosition>) -> Result<()> {
         RungError::PositionExpired
     );
 
-    let quote_amount = ctx.accounts.position.strike_quote_escrowed;
-    let stock_amount = ctx.accounts.position.stock_raw_escrowed;
+    let quote_amount = ctx.accounts.fill.strike_quote_amount;
+    let stock_amount = ctx.accounts.fill.stock_raw_escrowed;
     let position_key = ctx.accounts.position.key();
+    let fill_key = ctx.accounts.fill.key();
     let authority_bump = ctx.accounts.position.authority_bump;
     let seeds: &[&[u8]] = &[
         POSITION_AUTHORITY_SEED,
@@ -131,16 +144,31 @@ pub fn exercise_position(ctx: Context<ExercisePosition>) -> Result<()> {
         Some(&[seeds]),
     )?;
 
+    let taker = ctx.accounts.fill.taker;
+    let fill = &mut ctx.accounts.fill;
+    fill.settled_at = now;
+    fill.status = FillStatus::Exercised;
+
     let position = &mut ctx.accounts.position;
-    position.strike_quote_escrowed = 0;
-    position.stock_raw_escrowed = 0;
+    position.stock_raw_escrowed = position
+        .stock_raw_escrowed
+        .checked_sub(stock_amount)
+        .ok_or(RungError::MathOverflow)?;
+    // `strike_quote_escrowed` is deliberately left alone: it is the fixed denominator every
+    // fill was sized against, not a running balance. Shrinking it here would silently
+    // re-price the fills that come after this one.
+    position.fills_open = position
+        .fills_open
+        .checked_sub(1)
+        .ok_or(RungError::MathOverflow)?;
     position.settled_at = now;
-    position.status = PositionStatus::Exercised;
+    position.status = position.derive_status();
 
     emit!(PositionExercised {
         position: position_key,
+        fill: fill_key,
         maker: position.maker,
-        taker: position.taker,
+        taker,
         quote_to_taker: quote_amount,
         stock_to_maker: stock_amount,
         settled_at: now,

@@ -20,6 +20,7 @@ import {
 } from '@solana/spl-token';
 import { assert } from 'chai';
 import { Rung } from '../target/types/rung';
+import { getShared, fund as fundFrom } from './fixture.ts';
 
 /**
  * The mock PreStock carries a transfer fee, because that is the extension the *program*
@@ -78,8 +79,18 @@ describe('rung', () => {
       authority,
       quoteVault: getAssociatedTokenAddressSync(quoteMint, authority, true, TOKEN_PROGRAM_ID),
       stockVault: getAssociatedTokenAddressSync(stockMint, authority, true, TOKEN_2022_PROGRAM_ID),
+      fill: (index: number) =>
+        PublicKey.findProgramAddressSync(
+          [Buffer.from('fill'), position.toBuffer(), new BN(index).toArrayLike(Buffer, 'le', 4)],
+          program.programId,
+        )[0],
     };
   };
+
+  /** Where the protocol fee lands. Zero-rate by default, so it stays empty unless a test sets one. */
+  const feeTreasury = Keypair.generate();
+  const feeTreasuryAccount = () =>
+    getAssociatedTokenAddressSync(quoteMint, feeTreasury.publicKey, false, TOKEN_PROGRAM_ID);
 
   let nonceCounter = 0;
   const nextNonce = () => new BN(++nonceCounter);
@@ -127,26 +138,44 @@ describe('rung', () => {
     return { ...p, nonce, expiry };
   }
 
-  async function accept(p: { position: PublicKey; authority: PublicKey; stockVault: PublicKey }, send: bigint) {
-    return program.methods
-      .acceptCommitment(new BN(send.toString()))
+  /**
+   * Take a commitment. `fillStrike` defaults to whatever is still open, which is the
+   * ordinary full take; pass a smaller figure to take a slice. Returns the fill's address,
+   * because settlement now acts on the fill rather than the position.
+   */
+  async function accept(
+    p: { position: PublicKey; authority: PublicKey; stockVault: PublicKey; fill: (i: number) => PublicKey },
+    send: bigint,
+    opts: { fillStrike?: BN; signer?: Keypair; takerStockAccount?: PublicKey; takerQuoteAccount?: PublicKey } = {},
+  ) {
+    const signer = opts.signer ?? taker;
+    const position = await program.account.position.fetch(p.position);
+    const fill = p.fill(position.fillsCreated);
+    await program.methods
+      .acceptCommitment(new BN(send.toString()), opts.fillStrike ?? position.strikeQuoteOpen)
       .accounts({
-        taker: taker.publicKey,
+        taker: signer.publicKey,
         config: configPda,
         market: marketPda,
         position: p.position,
+        fill,
         positionAuthority: p.authority,
         stockMint,
         quoteMint,
-        takerStockAccount: takerStock,
-        takerQuoteAccount: takerQuote,
+        takerStockAccount: opts.takerStockAccount ?? takerStock,
+        takerQuoteAccount: opts.takerQuoteAccount ?? takerQuote,
         makerQuoteAccount: makerQuote,
+        feeTreasuryAccount: feeTreasuryAccount(),
+        feeTreasury: feeTreasury.publicKey,
         stockVault: p.stockVault,
         stockTokenProgram: TOKEN_2022_PROGRAM_ID,
         quoteTokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
       })
-      .signers([taker])
+      .signers([signer])
       .rpc();
+    return fill;
   }
 
   /**
@@ -178,8 +207,7 @@ describe('rung', () => {
     await fund(maker.publicKey, 1.0);
     await fund(taker.publicKey, 0.3);
 
-    // USDC stand-in: legacy SPL Token, no extensions, exactly like the real thing.
-    quoteMint = await createMint(connection, admin, admin.publicKey, null, QUOTE_DECIMALS, undefined, undefined, TOKEN_PROGRAM_ID);
+    ({ quoteMint, configPda } = await getShared());
 
     // Mock PreStock: Token-2022 with a transfer fee.
     const stockKp = Keypair.generate();
@@ -214,18 +242,18 @@ describe('rung', () => {
     await mintTo(connection, admin, quoteMint, takerQuote, admin, 1_000_000 * 10 ** QUOTE_DECIMALS, [], undefined, TOKEN_PROGRAM_ID);
     await mintTo(connection, admin, stockMint, takerStock, admin, 1_000 * 10 ** STOCK_DECIMALS, [], undefined, TOKEN_2022_PROGRAM_ID);
 
-    [configPda] = PublicKey.findProgramAddressSync([Buffer.from('config')], program.programId);
     [marketPda] = PublicKey.findProgramAddressSync([Buffer.from('market'), stockMint.toBuffer()], program.programId);
 
+    // Point the fee at its own keypair while leaving the rate at zero, so every match in
+    // this file runs the fee path without any of them actually being charged.
     await program.methods
-      .initializeConfig()
-      .accounts({
-        admin: admin.publicKey,
-        config: configPda,
-        quoteMint,
-        quoteTokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
+      .setFee(0)
+      .accounts({ admin: admin.publicKey, config: configPda, feeTreasury: feeTreasury.publicKey })
+      .rpc();
+
+    await program.methods
+      .setMinFill(new BN(0))
+      .accounts({ admin: admin.publicKey, config: configPda })
       .rpc();
 
     await program.methods
@@ -255,7 +283,8 @@ describe('rung', () => {
       assert.deepEqual(pos.status, { open: {} });
       assert.equal(pos.strikeQuoteEscrowed.toString(), strike.toString());
       assert.equal(pos.stockRawEscrowed.toNumber(), 0, 'no stock until matched');
-      assert.equal(pos.taker.toBase58(), PublicKey.default.toBase58());
+      assert.equal(pos.strikeQuoteOpen.toString(), strike.toString(), 'all of it is open');
+      assert.equal(pos.fillsCreated, 0);
       assert.equal(pos.targetValuationUsd.toString(), '1000000000000');
 
       const vault = await getAccount(connection, p.quoteVault, undefined, TOKEN_PROGRAM_ID);
@@ -397,21 +426,26 @@ describe('rung', () => {
       const makerSecondQuote = await createAccount(connection, admin, quoteMint, maker.publicKey, Keypair.generate(), undefined, TOKEN_PROGRAM_ID);
       try {
         await program.methods
-          .acceptCommitment(new BN(grossUp(1_000_000n).toString()))
+          .acceptCommitment(new BN(grossUp(1_000_000n).toString()), usd(10))
           .accounts({
             taker: maker.publicKey,
             config: configPda,
             market: marketPda,
             position: p.position,
+            fill: p.fill(0),
             positionAuthority: p.authority,
             stockMint,
             quoteMint,
             takerStockAccount: makerStock,
             takerQuoteAccount: makerSecondQuote,
             makerQuoteAccount: makerQuote,
+            feeTreasuryAccount: feeTreasuryAccount(),
+            feeTreasury: feeTreasury.publicKey,
             stockVault: p.stockVault,
             stockTokenProgram: TOKEN_2022_PROGRAM_ID,
             quoteTokenProgram: TOKEN_PROGRAM_ID,
+            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
           })
           .signers([maker])
           .rpc();
@@ -421,19 +455,19 @@ describe('rung', () => {
       }
     });
 
-    it('refuses a second accept', async () => {
+    it('refuses a second accept once nothing is open', async () => {
       const required = 1_000_000n;
       const p = await createCommitment({ stockRequired: required, strike: usd(10), premium: usd(1), expiryOffsetSecs: 3600 });
       await accept(p, grossUp(required));
       try {
-        await accept(p, grossUp(required));
+        await accept(p, grossUp(required), { fillStrike: usd(10) });
         assert.fail('should have rejected');
       } catch (e: any) {
-        assert.include(e.toString(), 'InvalidState');
+        assert.include(e.toString(), 'NothingOpen');
       }
     });
 
-    it('refuses to cancel once matched', async () => {
+    it('refuses to cancel collateral a fill already claims', async () => {
       const required = 1_000_000n;
       const p = await createCommitment({ stockRequired: required, strike: usd(10), premium: usd(1), expiryOffsetSecs: 3600 });
       await accept(p, grossUp(required));
@@ -453,7 +487,7 @@ describe('rung', () => {
           .rpc();
         assert.fail('a matched maker must not be able to walk away');
       } catch (e: any) {
-        assert.include(e.toString(), 'InvalidState');
+        assert.include(e.toString(), 'NothingOpen');
       }
     });
   });
@@ -461,12 +495,17 @@ describe('rung', () => {
   describe('exercise', () => {
     const makerStock = () => getAssociatedTokenAddressSync(stockMint, maker.publicKey, false, TOKEN_2022_PROGRAM_ID);
 
-    async function exercise(p: { position: PublicKey; authority: PublicKey; quoteVault: PublicKey; stockVault: PublicKey }, signer = taker) {
+    async function exercise(
+      p: { position: PublicKey; authority: PublicKey; quoteVault: PublicKey; stockVault: PublicKey; fill: (i: number) => PublicKey },
+      fill: PublicKey,
+      signer = taker,
+    ) {
       return program.methods
-        .exercisePosition()
+        .exerciseFill()
         .accounts({
           taker: signer.publicKey,
           position: p.position,
+          fill,
           positionAuthority: p.authority,
           maker: maker.publicKey,
           stockMint,
@@ -488,15 +527,18 @@ describe('rung', () => {
       const required = 83_365_949n;
       const strike = usd(100);
       const p = await createCommitment({ stockRequired: required, strike, premium: usd(4.6), expiryOffsetSecs: 3600 });
-      await accept(p, grossUp(required));
+      const fill = await accept(p, grossUp(required));
 
       const escrowed = BigInt((await program.account.position.fetch(p.position)).stockRawEscrowed.toString());
       const takerQuoteBefore = (await getAccount(connection, takerQuote, undefined, TOKEN_PROGRAM_ID)).amount;
 
-      await exercise(p);
+      await exercise(p, fill);
 
       const pos = await program.account.position.fetch(p.position);
-      assert.deepEqual(pos.status, { exercised: {} });
+      assert.deepEqual(pos.status, { settled: {} }, 'nothing open and no fill outstanding');
+      assert.equal(pos.fillsOpen, 0);
+      const settledFill = await program.account.fill.fetch(fill);
+      assert.deepEqual(settledFill.status, { exercised: {} }, 'the fill records how it ended');
 
       const takerQuoteAfter = (await getAccount(connection, takerQuote, undefined, TOKEN_PROGRAM_ID)).amount;
       assert.equal((takerQuoteAfter - takerQuoteBefore).toString(), strike.toString(), 'holder receives the full strike');
@@ -513,9 +555,9 @@ describe('rung', () => {
     it('refuses anyone but the taker', async () => {
       const required = 1_000_000n;
       const p = await createCommitment({ stockRequired: required, strike: usd(10), premium: usd(1), expiryOffsetSecs: 3600 });
-      await accept(p, grossUp(required));
+      const fill = await accept(p, grossUp(required));
       try {
-        await exercise(p, maker);
+        await exercise(p, fill, maker);
         assert.fail('the maker must not be able to force exercise');
       } catch (e: any) {
         assert.match(e.toString(), /Unauthorized|has_one|ConstraintHasOne/);
@@ -525,34 +567,73 @@ describe('rung', () => {
     it('refuses a second exercise', async () => {
       const required = 1_000_000n;
       const p = await createCommitment({ stockRequired: required, strike: usd(10), premium: usd(1), expiryOffsetSecs: 3600 });
-      await accept(p, grossUp(required));
-      await exercise(p);
+      const fill = await accept(p, grossUp(required));
+      await exercise(p, fill);
       try {
-        await exercise(p);
+        await exercise(p, fill);
         assert.fail('should have rejected');
       } catch (e: any) {
         assert.include(e.toString(), 'InvalidState');
       }
     });
 
-    it('refuses an unmatched position', async () => {
+    it('returns the fill rent only once it has settled, and only to the taker', async () => {
+      const required = 1_000_000n;
+      const p = await createCommitment({ stockRequired: required, strike: usd(10), premium: usd(1), expiryOffsetSecs: 3600 });
+      const fill = await accept(p, grossUp(required));
+
+      const close = (signer: Keypair) =>
+        program.methods
+          .closeFill()
+          .accounts({ taker: signer.publicKey, position: p.position, fill })
+          .signers([signer])
+          .rpc();
+
+      // A live claim is not a settled one: its rent is what keeps the claim on chain.
+      try {
+        await close(taker);
+        assert.fail('an outstanding fill must not be closable');
+      } catch (e: any) {
+        assert.include(e.toString(), 'InvalidState');
+      }
+
+      await exercise(p, fill);
+      try {
+        await close(maker);
+        assert.fail('only the taker may reclaim their own rent');
+      } catch (e: any) {
+        assert.match(e.toString(), /Unauthorized|ConstraintHasOne|has_one/);
+      }
+
+      const before = await connection.getBalance(taker.publicKey);
+      await close(taker);
+      assert.isNull(await connection.getAccountInfo(fill), 'the record is gone once its rent is reclaimed');
+      assert.isAbove(await connection.getBalance(taker.publicKey), before, 'the rent came back');
+    });
+
+    it('refuses an unmatched commitment, which has no fill to exercise', async () => {
       const p = await createCommitment({ stockRequired: 1_000_000n, strike: usd(10), premium: usd(1), expiryOffsetSecs: 3600 });
       try {
-        await exercise(p);
+        await exercise(p, p.fill(0));
         assert.fail('should have rejected');
       } catch (e: any) {
-        assert.match(e.toString(), /InvalidState|Unauthorized|has_one/);
+        assert.match(e.toString(), /AccountNotInitialized|InvalidState|Unauthorized|has_one/);
       }
     });
   });
 
   describe('expiry', () => {
-    async function expire(p: { position: PublicKey; authority: PublicKey; quoteVault: PublicKey; stockVault: PublicKey }, cranker: Keypair) {
+    async function expire(
+      p: { position: PublicKey; authority: PublicKey; quoteVault: PublicKey; stockVault: PublicKey },
+      fill: PublicKey,
+      cranker: Keypair,
+    ) {
       return program.methods
-        .expirePosition()
+        .expireFill()
         .accounts({
           cranker: cranker.publicKey,
           position: p.position,
+          fill,
           maker: maker.publicKey,
           taker: taker.publicKey,
           positionAuthority: p.authority,
@@ -574,9 +655,9 @@ describe('rung', () => {
     it('refuses before the deadline', async () => {
       const required = 1_000_000n;
       const p = await createCommitment({ stockRequired: required, strike: usd(10), premium: usd(1), expiryOffsetSecs: 3600 });
-      await accept(p, grossUp(required));
+      const fill = await accept(p, grossUp(required));
       try {
-        await expire(p, admin);
+        await expire(p, fill, admin);
         assert.fail('should have rejected');
       } catch (e: any) {
         assert.include(e.toString(), 'PositionNotExpired');
@@ -589,7 +670,7 @@ describe('rung', () => {
       this.timeout(120_000);
       const required = 1_000_000n;
       const p = await createCommitment({ stockRequired: required, strike: usd(10), premium: usd(1), expiryOffsetSecs: 62 });
-      await accept(p, grossUp(required));
+      const fill = await accept(p, grossUp(required));
 
       const escrowed = BigInt((await program.account.position.fetch(p.position)).stockRawEscrowed.toString());
       const makerBefore = (await getAccount(connection, makerQuote, undefined, TOKEN_PROGRAM_ID)).amount;
@@ -598,10 +679,10 @@ describe('rung', () => {
       await sleep(65_000);
 
       // `admin` is neither maker nor taker: expiry must not depend on a counterparty.
-      await expire(p, admin);
+      await expire(p, fill, admin);
 
       const pos = await program.account.position.fetch(p.position);
-      assert.deepEqual(pos.status, { expired: {} });
+      assert.deepEqual(pos.status, { settled: {} });
 
       const makerAfter = (await getAccount(connection, makerQuote, undefined, TOKEN_PROGRAM_ID)).amount;
       const takerAfter = (await getAccount(connection, takerStock, undefined, TOKEN_2022_PROGRAM_ID)).amount;
@@ -614,7 +695,7 @@ describe('rung', () => {
     it('blocks new commitments once disabled but still settles existing ones', async () => {
       const required = 1_000_000n;
       const live = await createCommitment({ stockRequired: required, strike: usd(10), premium: usd(1), expiryOffsetSecs: 3600 });
-      await accept(live, grossUp(required));
+      const liveFill = await accept(live, grossUp(required));
 
       await program.methods
         .setMarketEnabled(false, false)
@@ -630,10 +711,11 @@ describe('rung', () => {
 
       // The point of §50: winding a market down must never strand escrowed collateral.
       await program.methods
-        .exercisePosition()
+        .exerciseFill()
         .accounts({
           taker: taker.publicKey,
           position: live.position,
+          fill: liveFill,
           positionAuthority: live.authority,
           maker: maker.publicKey,
           stockMint,
@@ -651,7 +733,7 @@ describe('rung', () => {
         .rpc();
 
       const pos = await program.account.position.fetch(live.position);
-      assert.deepEqual(pos.status, { exercised: {} }, 'a disabled market must not block settlement');
+      assert.deepEqual(pos.status, { settled: {} }, 'a disabled market must not block settlement');
 
       await program.methods
         .setMarketEnabled(true, true)

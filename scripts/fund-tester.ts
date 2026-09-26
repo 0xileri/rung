@@ -64,7 +64,7 @@ const rpc = process.env.FUND_RPC_URL ?? cfg.FUND_RPC_URL ?? 'https://api.devnet.
 const connection = new Connection(rpc, 'confirmed');
 /** Enough devnet SOL for a tester's fees and account rent across a full demo. */
 const SOL_FLOOR = 0.1;
-const deployment = JSON.parse(readFileSync('devnet.json', 'utf8'));
+const deployment = JSON.parse(readFileSync(process.env.DEPLOYMENT_FILE ?? 'devnet.json', 'utf8'));
 const payer = Keypair.fromSecretKey(
   Uint8Array.from(JSON.parse(readFileSync(`${process.env.HOME}/.config/solana/id.json`, 'utf8'))),
 );

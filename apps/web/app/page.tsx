@@ -15,9 +15,11 @@ import { buildCurve } from '../../../packages/sdk/src/commitment-curve.ts';
 import { getPreStocks } from '../lib/prestocks-cache';
 import { CLUSTER, connection, toOpenCommitments, type PositionsResult } from '../lib/chain';
 import { getPositionsCached } from '../lib/positions-cache';
+import { matchedRowFor } from '../lib/holdings';
 import { pnlForPosition, priceBook, readMintScales, totalPnl, type MintScale } from '../lib/pnl';
 import { ActivityBand, type Activity } from '../components/ActivityBand';
 import { TryBothSides } from '../components/TryBothSides';
+import { LiquidityTools } from '../components/LiquidityTools';
 import { escrowTargetFor, LISTED_SYMBOLS } from '../lib/deployment';
 
 export const dynamic = 'force-dynamic';
@@ -71,26 +73,38 @@ async function loadHero(featured: PreStockAsset | undefined, fetched: PositionsR
 }
 
 /**
- * Protocol-wide figures, every one computed from Position accounts on chain. P&L uses the
- * same function as My Positions; since each position's two sides are exact opposites, the
- * makers' total is the holders' total negated.
+ * Protocol-wide figures, every one computed from chain accounts. P&L uses the same function
+ * as My Positions, over the same rows: one per matched slice.
+ *
+ * Makers and holders are summed separately. Without a protocol fee they are exact opposites,
+ * but a fee is paid by the holder and never reaches the maker, so negating one side to get
+ * the other would quietly credit makers with money the protocol kept.
  */
 async function loadActivity(assets: PreStockAsset[], fetched: PositionsResult): Promise<Activity | null> {
   if (!fetched.ok) return null;
-  const positions = fetched.positions;
-  const open = positions.filter((p) => p.status === 'Open');
-  const matched = positions.filter((p) => p.matchedAt > 0);
-  const scales = await readMintScales(connection(), matched.map((p) => p.stockMint)).catch(
+  const { positions, fills } = fetched;
+  // Capital on offer is what no taker has claimed, which is also what a holder could take.
+  const stillOpen = positions.filter((p) => p.strikeQuoteOpen > 0n);
+  const byPosition = new Map(positions.map((p) => [p.pubkey, p]));
+  const pairs = fills.flatMap((f) => {
+    const p = byPosition.get(f.position);
+    return p ? [{ p, f }] : [];
+  });
+  const matched = pairs.map(({ p, f }) => matchedRowFor(p, f, 'maker'));
+  const held = pairs.map(({ p, f }) => matchedRowFor(p, f, 'holder'));
+  const scales = await readMintScales(connection(), matched.map((m) => m.stockMint)).catch(
     () => ({}) as Record<string, MintScale>,
   );
   const prices = priceBook(assets);
   return {
-    committedUsd: open.reduce((s, p) => s + fromQuote(p.strikeQuoteEscrowed), 0),
-    openCount: open.length,
+    committedUsd: stillOpen.reduce((s, p) => s + fromQuote(p.strikeQuoteOpen), 0),
+    openCount: stillOpen.length,
     matchedCount: matched.length,
-    liveCount: matched.filter((p) => p.status === 'Matched').length,
-    premiumsUsd: matched.reduce((s, p) => s + fromQuote(p.premiumQuoteAmount), 0),
-    makers: totalPnl(matched.map((p) => pnlForPosition(p, 'maker', scales[p.stockMint], prices))),
+    liveCount: matched.filter((m) => m.status === 'Matched').length,
+    premiumsUsd: matched.reduce((s, m) => s + fromQuote(m.premiumQuoteAmount), 0),
+    feesUsd: matched.reduce((s, m) => s + fromQuote(m.feePaid), 0),
+    makers: totalPnl(matched.map((m) => pnlForPosition(m, 'maker', scales[m.stockMint], prices))),
+    holders: totalPnl(held.map((h) => pnlForPosition(h, 'holder', scales[h.stockMint], prices))),
     staleSeconds: fetched.staleSeconds,
   };
 }
@@ -249,6 +263,8 @@ export default async function Home() {
       </section>
 
       <ActivityBand activity={activity} cluster={CLUSTER} />
+
+      {featured && <LiquidityTools symbol={LISTED_SYMBOLS[0] ?? featured.symbol} />}
 
       {CLUSTER !== 'mainnet-beta' && featured && <TryBothSides symbol={LISTED_SYMBOLS[0] ?? featured.symbol} />}
 
@@ -424,10 +440,10 @@ export default async function Home() {
           <div className="card tint-teal" style={{ padding: '28px 24px' }}>
             <div className="label" style={{ marginBottom: 10, color: 'var(--teal-ink)' }}>Protect</div>
             <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, letterSpacing: '-0.02em' }}>
-              Sell upside, keep a floor
+              Keep the upside, buy a floor
             </h3>
             <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>
-              Holders lock PreStocks, collect premium, and may exchange for the committed USDC
+              Holders lock PreStocks, pay a premium, and may exchange them for the committed USDC
               before expiry.
             </p>
           </div>

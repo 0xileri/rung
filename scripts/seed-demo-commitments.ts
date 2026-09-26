@@ -68,7 +68,7 @@ async function main() {
   );
   const provider = new AnchorProvider(connection, new Wallet(payer), { commitment: 'confirmed' });
 
-  const deployment = JSON.parse(readFileSync('devnet.json', 'utf8'));
+  const deployment = JSON.parse(readFileSync(process.env.DEPLOYMENT_FILE ?? 'devnet.json', 'utf8'));
   const market = deployment.markets[SYMBOL];
   if (!market) throw new Error(`devnet.json has no ${SYMBOL} market`);
   const programId = new PublicKey(deployment.programId);

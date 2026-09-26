@@ -4,10 +4,14 @@
  * A matched position is a put: the holder may hand over the tokens in the vault in exchange
  * for the maker's strike. Measured against simply letting it expire -- each side takes back
  * its own collateral -- only two things move value between the parties: the premium, and,
- * if the holder exercises, that swap. So the two sides' figures are exact opposites:
+ * if the holder exercises, that swap. So the two sides' figures are opposites:
  *
- *   maker  = premium - swap
- *   holder = swap - premium
+ *   maker  = premium received - swap
+ *   holder = swap - premium paid
+ *
+ * With no protocol fee those two premiums are the same number and the figures cancel
+ * exactly. With one, the holder pays the whole premium and the maker receives it less the
+ * fee, so callers pass each side its own figure and the two differ by precisely the fee.
  *
  * where `swap` is the strike less the market value of the tokens that would leave the vault
  * (after the mint's exit fee):

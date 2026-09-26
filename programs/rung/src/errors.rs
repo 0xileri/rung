@@ -41,4 +41,14 @@ pub enum RungError {
     TransferHookSet,
     #[msg("A maker cannot take the other side of their own commitment")]
     SelfMatch,
+    #[msg("Fill is below the minimum and does not take the whole remainder")]
+    FillTooSmall,
+    #[msg("Fill would leave an open remainder below the minimum")]
+    FillRemainderTooSmall,
+    #[msg("Fill is larger than the commitment's open amount")]
+    FillExceedsOpen,
+    #[msg("Commitment has no open amount left to take or withdraw")]
+    NothingOpen,
+    #[msg("Fee exceeds the maximum basis points")]
+    FeeTooHigh,
 }

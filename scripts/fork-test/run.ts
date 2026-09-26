@@ -15,6 +15,7 @@ import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID, createAssociatedTokenAccountId
 import { fetchMintState, fetchPreStocks, rpcFromUrl, type MintState } from '../../packages/sdk/src/prestocks.ts';
 import { quoteStrike, valuationBands } from '../../packages/sdk/src/valuation.ts';
 import { amountReceived, grossUpForRequired, worstCaseTransferFee } from '../../packages/sdk/src/token2022.ts';
+import { proRataCeil } from '../../packages/sdk/src/fills.ts';
 import { checker, rungFlows, usd } from '../lib/rung-flows.ts';
 
 const RPC = 'http://127.0.0.1:8899';
@@ -83,7 +84,7 @@ async function main() {
 
     const send = grossUpForRequired(q.rawQuantity, worstCaseTransferFee(state.transferFeeConfig));
     const makerUsdc0 = await rung.balance(rung.usdcOf(maker.publicKey), TOKEN_PROGRAM_ID);
-    await rung.accept(h, send);
+    const fill = await rung.accept(h, send);
     const escrowed = BigInt((await program.account.position.fetch(h.position)).stockRawEscrowed.toString());
     const vault = await rung.balance(h.stockVault, TOKEN_2022_PROGRAM_ID);
     check(escrowed === vault, `accept records the vault's real balance (${vault})`);
@@ -93,7 +94,7 @@ async function main() {
     check(makerUsdc1 - makerUsdc0 === 3_000_000n, 'maker receives the $3 premium on match');
 
     const takerUsdc0 = await rung.balance(rung.usdcOf(taker.publicKey), TOKEN_PROGRAM_ID);
-    await rung.exercise(h);
+    await rung.exercise(h, fill);
     const takerUsdc1 = await rung.balance(rung.usdcOf(taker.publicKey), TOKEN_PROGRAM_ID);
     const makerStock = await rung.balance(rung.stockOf(mint, maker.publicKey), TOKEN_2022_PROGRAM_ID);
     check(takerUsdc1 - takerUsdc0 === 100_000_000n, 'exercise pays the holder the full $100');
@@ -118,13 +119,61 @@ async function main() {
   check((await rung.balance(atCap.quoteVault, TOKEN_PROGRAM_ID)) === 1_000_000_000n, 'a strike exactly at the $1,000 cap is accepted');
   await rung.cancel(atCap);
 
+  // Partial fills and the protocol fee, on the real mint at its live 1% fee. Every figure a
+  // slice owes is pro rata against what was escrowed; the check is that the real mint's
+  // transfer fee and rounding never let the vault fall short of what the slices claim.
+  console.log(`\n${first} partial fills, with a protocol fee`);
+  const treasury = Keypair.generate();
+  await program.methods
+    .setFee(100)
+    .accounts({ admin: admin.publicKey, config: rung.configPda, feeTreasury: treasury.publicKey })
+    .rpc();
+  const worst = worstCaseTransferFee(state.transferFeeConfig);
+  const fullRaw = 90_000_000n;
+  const slice = (strike: bigint) => proRataCeil(fullRaw, strike, 100_000_000n);
+  const pf = await rung.create(mint, fullRaw, usd(100), usd(5), 3600);
+  const makerUsdcP = await rung.balance(rung.usdcOf(maker.publicKey), TOKEN_PROGRAM_ID);
+  const asTaker = { signer: taker, quoteAccount: rung.usdcOf(taker.publicKey) };
+  const first40 = await rung.accept(pf, grossUpForRequired(slice(40_000_000n), worst), { ...asTaker, fillStrike: usd(40) });
+  const then60 = await rung.accept(pf, grossUpForRequired(slice(60_000_000n), worst), { ...asTaker, fillStrike: usd(60) });
+  const f40 = await program.account.fill.fetch(first40);
+  const f60 = await program.account.fill.fetch(then60);
+  const stockVault = await rung.balance(pf.stockVault, TOKEN_2022_PROGRAM_ID);
+  check(
+    BigInt(f40.stockRawEscrowed.toString()) + BigInt(f60.stockRawEscrowed.toString()) === stockVault,
+    `two slices' recorded stock adds up to the vault's real balance (${stockVault})`,
+  );
+  check(
+    BigInt(f40.stockRawEscrowed.toString()) >= slice(40_000_000n) && BigInt(f60.stockRawEscrowed.toString()) >= slice(60_000_000n),
+    'each slice clears its own pro-rata requirement after the real fee',
+  );
+  check(
+    (await rung.balance(rung.usdcOf(maker.publicKey), TOKEN_PROGRAM_ID)) - makerUsdcP === 4_950_000n,
+    'the maker receives the $5 premium less the 1% protocol fee',
+  );
+  check((await rung.balance(rung.usdcOf(treasury.publicKey), TOKEN_PROGRAM_ID)) === 50_000n, 'the treasury receives exactly the fee');
+
+  const takerUsdcP = await rung.balance(rung.usdcOf(taker.publicKey), TOKEN_PROGRAM_ID);
+  await rung.exercise(pf, first40);
+  check((await rung.balance(rung.usdcOf(taker.publicKey), TOKEN_PROGRAM_ID)) - takerUsdcP === 40_000_000n, 'exercising the $40 slice pays $40, not the whole strike');
+  check((await rung.balance(pf.quoteVault, TOKEN_PROGRAM_ID)) === 60_000_000n, 'the other slice is still fully funded');
+  await rung.exercise(pf, then60);
+  check(
+    (await rung.balance(pf.quoteVault, TOKEN_PROGRAM_ID)) === 0n && (await rung.balance(pf.stockVault, TOKEN_2022_PROGRAM_ID)) === 0n,
+    'settling both slices empties both vaults exactly',
+  );
+  await program.methods
+    .setFee(0)
+    .accounts({ admin: admin.publicKey, config: rung.configPda, feeTreasury: admin.publicKey })
+    .rpc();
+
   const e = await rung.create(mint, 1_000_000n, usd(10), usd(1), 62);
-  await rung.accept(e, grossUpForRequired(1_000_000n, worstCaseTransferFee(state.transferFeeConfig)));
+  const expiringFill = await rung.accept(e, grossUpForRequired(1_000_000n, worstCaseTransferFee(state.transferFeeConfig)));
   const eEscrowed = BigInt((await program.account.position.fetch(e.position)).stockRawEscrowed.toString());
   const takerStock0 = await rung.balance(rung.stockOf(mint, taker.publicKey), TOKEN_2022_PROGRAM_ID);
   const makerUsdcE = await rung.balance(rung.usdcOf(maker.publicKey), TOKEN_PROGRAM_ID);
   console.log('  waiting for the 62s expiry on the cluster clock…');
-  await rung.expireWhenDue(e);
+  await rung.expireWhenDue(e, expiringFill);
   const takerStock1 = await rung.balance(rung.stockOf(mint, taker.publicKey), TOKEN_2022_PROGRAM_ID);
   check(takerStock1 - takerStock0 === amountReceived(eEscrowed, state.transferFee), 'expire returns the holder their stock, net of the exit fee');
   check(

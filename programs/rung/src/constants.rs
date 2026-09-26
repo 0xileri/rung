@@ -31,3 +31,17 @@ pub const SYMBOL_LEN: usize = 16;
 /// program upgrade on purpose: a limit an admin key could lift quietly is not much of one.
 #[constant]
 pub const MAX_STRIKE_WHOLE_UNITS: u64 = 1_000;
+
+#[constant]
+pub const FILL_SEED: &[u8] = b"fill";
+
+/// Basis-point denominator for the protocol fee.
+pub const BPS_DENOMINATOR: u64 = 10_000;
+
+/// Ceiling on the protocol fee, in basis points of the premium.
+///
+/// The admin sets the fee, so the cap is what stops a compromised admin key from taking a
+/// maker's entire income at the moment of a match. It binds the fee alone: collateral is
+/// never a fee's source, whatever this is set to.
+#[constant]
+pub const MAX_FEE_BPS: u16 = 500;

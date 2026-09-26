@@ -7,7 +7,7 @@ import {
   type TransferFee,
 } from '../../../packages/sdk/src/token2022.ts';
 import { positionPnl, type PnlBasis } from '../../../packages/sdk/src/pnl.ts';
-import type { Position } from './chain';
+import type { Holding } from './holdings';
 import { fromQuote } from './format';
 import { symbolForMint, type MintedAsset } from './deployment';
 
@@ -77,7 +77,7 @@ export type PositionPnlView = {
 };
 
 export function pnlForPosition(
-  p: Position,
+  p: Holding,
   side: 'maker' | 'holder',
   scale: MintScale | undefined,
   prices: PriceBook | null,
@@ -91,7 +91,8 @@ export function pnlForPosition(
   const outRaw = scale?.fee ? amountReceived(escrowedRaw, scale.fee) : escrowedRaw;
   const r = positionPnl({
     side,
-    status: p.status,
+    // A partly-taken commitment's open row has exchanged nothing, so it prices as Open.
+    status: p.status === 'PartiallyMatched' ? 'Open' : p.status,
     strikeUsd: fromQuote(p.strikeQuoteEscrowed || p.strikeQuoteAmount),
     premiumUsd: fromQuote(p.premiumQuoteAmount),
     stockOutUi: scale ? rawToUi(outRaw, scale.decimals, scale.multiplier) : 0,

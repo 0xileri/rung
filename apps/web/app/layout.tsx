@@ -19,6 +19,7 @@ const NAV = [
   { href: '/asset/OPENAI', label: 'Commit' },
   { href: '/protect/OPENAI', label: 'Protect' },
   { href: '/positions', label: 'My Positions' },
+  { href: '/book', label: 'Your book' },
 ];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

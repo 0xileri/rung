@@ -50,12 +50,13 @@ async function main() {
   console.log(`Maker    ${deployer.publicKey.toBase58()} (deployer)`);
   console.log(`Holder   ${holder.publicKey.toBase58()} (demo)`);
 
-  const live = (await program.account.position.all()).find((p) => {
-    const a = p.account as { taker: PublicKey; status: object };
+  // A taker's side lives on its Fill, not on the Position: one commitment can have many.
+  const live = ((await (program.account as any).fill.all()) as { publicKey: PublicKey; account: unknown }[]).find((f) => {
+    const a = f.account as { taker: PublicKey; status: object };
     return a.taker.equals(holder.publicKey) && Object.keys(a.status)[0]?.toLowerCase() === 'matched';
   });
   if (live) {
-    console.log(`Already live: ${live.publicKey.toBase58()} -- nothing to do.`);
+    console.log(`Already live: fill ${live.publicKey.toBase58()} -- nothing to do.`);
     return;
   }
 

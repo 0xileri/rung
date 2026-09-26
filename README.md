@@ -34,27 +34,52 @@ stepping out from the line where the asset currently trades.
 
 **Live on devnet:** https://rung.up.railway.app
 
-1. **Look.** The landing page's Commitment Curve and *On chain now* figures are read live
-   from Position accounts, including a live matched position and both sides' P&L.
-2. **Get tokens.** Switch Phantom to devnet, connect, and press **Get test tokens** for devnet
-   SOL, mock USDC and a mock of every PreStock (all eight are listed on devnet).
-3. **Try both sides.** Commit at a valuation on any PreStock; from a second wallet, take the other
-   side on Protect. My Positions shows each side's dates, collateral and P&L, and lets the
-   holder exercise.
+The devnet book is on chain, not fixtures: about fifty floors across all eight PreStocks,
+escrowed in program vaults by five demo makers, some already partly taken. It is mock USDC,
+seeded by [`scripts/seed-depth.ts`](scripts/seed-depth.ts) so the sweep and the curve have
+depth to show; every escrow is real and every figure is read from chain.
+
+1. **Get tokens.** Switch Phantom to devnet, connect, and press **Get test tokens** for devnet
+   SOL, mock USDC and a mock of every PreStock.
+2. **Take a band.** On *Protect* for OpenAI, ask for $300 of protection. It is filled from
+   several makers' floors, cheapest premium first, in one signature. Or take just a slice of
+   any one floor: $10 is enough.
+3. **Be the maker.** On an asset page, *Commit across a range* spreads USDC over a span of
+   valuations in one approval. *Your book* then shows what holders took, what the premium
+   paid, your capital over time, and lets you withdraw what nobody took.
+4. **Walk away.** A claim past its deadline settles without either side coming back: settling
+   is open to anyone, and a keeper does it for everyone every ten minutes.
 
 Worth checking:
 
-- **No oracle in settlement.** Exercise is the holder's contractual right; expiry is
+- **Slices are exact.** Every slice is its own claim with its own collateral, priced pro rata
+  against what the maker escrowed, rounded so the vault is never short. A slice must be at
+  least $10 and may not leave less than $10 behind unless it takes everything left, so
+  everything on the curve stays takeable. A seeded random walk of takes, refusals, exercises,
+  withdrawals and expiries checks that every vault balances to the unit after every step.
+- **The fee cannot touch collateral.** The protocol takes 1% of the premium on devnet. The
+  program caps it at 5% and only ever takes it from the premium, so a compromised admin
+  key cannot reach anyone's collateral.
+- **No oracle in settlement.** Exercise is the holder's contractual right, and expiry is
   permissionless, so no admin switch or absent counterparty can trap collateral.
 - **The real mints, handled honestly.** The 48.6% multiplier trap, the epoch-scheduled
   transfer fee, and the issuer's powers (permanent delegate, freeze, pause, transfer hook)
   are dealt with in code and disclosed on screen, not ignored.
-- **Tested against the real thing.** 24 program tests, 26 checks against the real OpenAI and
-  SpaceX mints on a mainnet fork, and 12 against the live devnet deployment.
+- **Tested against the real thing.** 37 program tests including that random walk, 33 checks
+  against the real OpenAI and SpaceX mints on a mainnet fork, including slices and the fee,
+  92 SDK tests, and 12 checks against the live devnet program itself: create, take,
+  exercise, withdraw and expire, plus the cap and self-match guardrails.
 - **Guardrails on chain.** A $1,000 cap per position, a transfer-hook guard, and no
   self-matching, all enforced by the program.
 
-A 90-second walkthrough is in [docs/demo-script.md](docs/demo-script.md).
+**What is new since Stocklana.** Rung began at the
+[Stocklana](https://hackathons.solana.com/hackathons/stocklana) hackathon, where one
+commitment could be taken by one holder, whole. The parts that make it a market came after:
+slices, the sweep, ladders, the maker's book and its capital charts, the protocol fee, and
+the keeper. Slices needed a new account layout, so this runs as its own program; the version
+submitted to Stocklana is tagged
+[`stocklana-submission`](https://github.com/0xileri/rung/tree/stocklana-submission), and its
+program is still deployed on devnet. The design of slices is in [docs/fills.md](docs/fills.md).
 
 ---
 
@@ -104,8 +129,8 @@ gives a power up. See [docs/limitations.md](docs/limitations.md).
 PreStocks API  ──►  valuation context, mark price, implied valuation
                     (never authorizes a transfer)
 
-Solana program ──►  lock · match · exercise · expire
-                    PDA vaults hold both legs
+Solana program ──►  lock · match (whole or in slices) · exercise · expire
+                    PDA vaults hold both legs, one claim per taker
 
 Chain state    ──►  the Commitment Curve, rebuilt by anyone
 ```
@@ -118,7 +143,7 @@ prints and feed manipulation from settlement entirely.
 a fixed strike once, at creation, and then frozen. A later change to the mark, the share count
 or the multiplier cannot rewrite an agreement already in force.
 
-**Settlement cannot be blocked.** `exercise_position` and `expire_position` read neither the
+**Settlement cannot be blocked.** `exercise_fill` and `expire_fill` read neither the
 pause flag nor the market flags, and expiry is permissionless — so no admin switch and no
 absent counterparty can trap collateral that is owed back.
 
@@ -126,9 +151,9 @@ absent counterparty can trap collateral that is owed back.
 
 | Path | |
 |---|---|
-| `programs/rung/` | Anchor program — 9 instructions, PDA vaults |
+| `programs/rung/` | Anchor program — 12 instructions, PDA vaults |
 | `packages/sdk/` | Token-2022 math, valuation→strike, Commitment Curve |
-| `apps/web/` | Next.js app — Commitment Curve, commit, protect, positions |
+| `apps/web/` | Next.js app — Commitment Curve, commit and ladder, protect and sweep, positions, the maker's book |
 | `docs/limitations.md` | What this does not do, stated plainly |
 | `scripts/` | Chain preflight, WSL toolchain, deploy |
 
@@ -136,10 +161,10 @@ absent counterparty can trap collateral that is owed back.
 
 ```bash
 npm install
-npm run test:sdk                      # 44 tests, no chain needed
-bash scripts/wsl/test-local.sh        # 24 tests against a local validator
+npm run test:sdk                      # 92 tests, no chain needed
+bash scripts/wsl/test-local.sh        # 37 tests against a local validator, one of them a random walk
 bash scripts/wsl/fork-test.sh         # every instruction against the REAL mints, on a mainnet fork
-node scripts/devnet-smoke.ts          # every instruction and guardrail against the live devnet deployment
+node scripts/devnet-smoke.ts          # 12 checks: every trading instruction and two guardrails, on the live devnet program
 node scripts/verify-chain.ts          # re-check the mint against live mainnet
 ```
 
@@ -152,15 +177,103 @@ Nothing is sent to mainnet.
 `verify-chain.ts` is worth running before any demo: the transfer fee is on an epoch schedule,
 so yesterday's numbers are not evidence.
 
+### The keeper
+
+```bash
+node scripts/keeper.ts --once --dry-run   # what is past its deadline, sending nothing
+node scripts/keeper.ts --once             # settle it: one pass, for a cron job
+node scripts/keeper.ts --watch 60         # or loop, backing off if the RPC does
+```
+
+Settling a claim after its deadline is permissionless, so nobody depends on a counterparty
+coming back — and nobody depends on the keeper either. It just saves people the trouble: the
+maker's USDC and the holder's tokens come home without either of them lifting a finger. It
+sends one instruction, `expire_fill`, which the program refuses before the deadline and which
+pays each side only what that claim records, so a keeper with a bug can waste its own fees
+and nothing else. It reads the cluster's clock rather than its own, settles the longest-waiting
+collateral first, and batches settlements by measured transaction size; if a batch fails
+because something changed under it, the claims are retried one at a time.
+
+`--rpc`, `--keypair` and `--limit` (settlements per cycle, default 50) are flags, or
+`KEEPER_RPC_URL` and `KEEPER_KEYPAIR` in the environment. The keypair pays fees, plus rent
+if a recipient no longer has a token account to receive into.
+
+On devnet it runs as a Railway cron job: one pass every ten minutes, paid for by a wallet of
+its own that holds devnet SOL and nothing else. Railway applies the root `railway.json` to every
+service built from this repository, so on this branch it only picks the builder; each service
+carries its own commands (the site: `npm run build`, `npm start`, health check on `/`). The
+`keeper` service's settings. A redeploy from the dashboard builds with Railpack instead,
+which would read the root `Cargo.toml` as a Rust project and ship an image without Node, so
+`railpack.json` pins its provider to Node and either builder produces a working image.
+
+| Setting | Value |
+|---|---|
+| Source | this repository, branch `feat/partial-fills` |
+| Build command | a no-op: the keeper runs as TypeScript directly on Node 24 |
+| Start command | `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/keeper.ts --once` |
+| Cron schedule | `*/10 * * * *` |
+| Restart policy | never: the next pass is ten minutes away anyway |
+| Watch paths | `scripts/keeper.ts`, `packages/sdk/**`, `package.json`, `package-lock.json`, `railway.json`, `railpack.json` |
+| Variables | `KEEPER_RPC_URL`, `NPM_CONFIG_PRODUCTION=false`, `KEEPER_SECRET_KEY` |
+
+A host has no key file to point at, so `KEEPER_SECRET_KEY` carries the key itself, as the
+keypair file's JSON array. It was set from stdin and appears nowhere in this repository.
+
+Claims last a month, so on an ordinary book the keeper has nothing to do for weeks. To watch
+it work, `scripts/keeper-demo.ts` puts one on devnet that is due in minutes:
+
+```bash
+node scripts/keeper-demo.ts <maker.json> <taker.json> --watch
+```
+
+The maker commits $20 at $1.00T on OPENAI and the taker takes all of it, with the deadline
+two minutes before a keeper pass, so the maker's book shows the claim waiting to settle before
+the keeper settles it. `--watch` then reports the settling transaction and who paid for it:
+the keeper's wallet, not either party's.
+
+### A book with depth
+
+```bash
+node scripts/seed-depth.ts --dry-run   # the plan and its rent, sending nothing
+node scripts/seed-depth.ts             # lay it down; a re-run only fills gaps
+```
+
+One maker's floors on one market prove the mechanism but cannot show a sweep crossing
+different makers' floors or a curve whose concentration note means anything. `seed-depth.ts`
+puts floors on every listed market's curve bands, shared by five makers (the deployer and four
+demo wallets), sized to peak a little below the market, with premium falling as floors get
+deeper and terms of 21 to 60 days; a few have a slice already taken by one of two demo holders.
+Strikes and slices are quoted from live PreStocks marks exactly as the app quotes them. On
+devnet it placed 45 commitments ($8,140) and 9 slices for about 0.25 SOL of rent.
+
+### A local stack
+
+Devnet is shared, so changes to the program are exercised here first:
+
+```bash
+bash scripts/wsl/local-stack-up.sh <tester-address>   # validator, program, market, floors, a funded tester
+NEXT_PUBLIC_CLUSTER=localnet bash scripts/wsl/dev.sh  # the web app, against it
+node scripts/local-book-scenario.ts maker.json taker.json --expiring 5
+bash scripts/wsl/local-stack.sh --stop
+```
+
+`local-book-scenario.ts` puts one maker's book into every state the app has to show —
+untouched, partly taken, partly withdrawn, expired and waiting — which is also what the keeper
+is tested against.
+
 ## Status
 
 **Live:** https://rung.up.railway.app
 
-- Program: **24/24** tests — full lifecycle, both settlement paths, every refusal in the
-  state machine, and the launch guardrails below
-- Mainnet fork: **26/26** checks against the real OpenAI and SpaceX mints
-- SDK: **44/44** tests, pinned against live mainnet values
-- Every instruction has a UI: commit, take the other side, exercise, cancel, settle expiry
+- Program: **37/37** tests — full lifecycle, partial fills, both settlement paths, every refusal in the
+  state machine, and the launch guardrails below. One of them is a seeded random walk of takes, refused sizes, exercises,
+  withdrawals and expiries that checks every vault is exactly balanced after every step
+  (`FUZZ_SEED=<n>` replays a run)
+- Mainnet fork: **33/33** checks against the real OpenAI and SpaceX mints, including partial fills and the protocol fee
+- SDK: **92/92** tests, pinned against live mainnet values
+- Every trading instruction has a UI: commit (one floor or a ladder), take a slice or sweep a
+  band, exercise, withdraw, and settle expired claims one at a time or all at once. The one
+  without a screen yet is `close_fill`, which lets a holder reclaim a settled claim's rent.
 
 ### Launch guardrails
 
@@ -178,22 +291,27 @@ Enforced by the program, not just the interface:
 
 | | |
 |---|---|
-| Program | [`6kqka5NWofo1cm6bm5JMhWbQgHeR6YT23qTvwnusSwpM`](https://explorer.solana.com/address/6kqka5NWofo1cm6bm5JMhWbQgHeR6YT23qTvwnusSwpM?cluster=devnet) |
-| Config | [`81keCkSZRierBmcXgcNBqqNTfYszRDvvgviwg4YTg8jo`](https://explorer.solana.com/address/81keCkSZRierBmcXgcNBqqNTfYszRDvvgviwg4YTg8jo?cluster=devnet) |
+| Program | [`BEEraLqHNJ8y8yTsXpDZsRAjwB9uKc3Awj1YBLZUKu2r`](https://explorer.solana.com/address/BEEraLqHNJ8y8yTsXpDZsRAjwB9uKc3Awj1YBLZUKu2r?cluster=devnet) |
+| Config | [`EnW1LkKkaq1PdcKpHsSWs3BxvBnLPR2DEerc7XGnxtFa`](https://explorer.solana.com/address/EnW1LkKkaq1PdcKpHsSWs3BxvBnLPR2DEerc7XGnxtFa?cluster=devnet) (fee 1% of premium, minimum slice $10) |
 | Mock USDC | [`CRUjjjByxTpUfeAhR377RTdpmravXXgSX6eTk93XxBov`](https://explorer.solana.com/address/CRUjjjByxTpUfeAhR377RTdpmravXXgSX6eTk93XxBov?cluster=devnet) |
+| Keeper | [`2HwFCWL5g7H4z8vyhrC9DXzmDbqFKAs7aDyHEiDMiSwk`](https://explorer.solana.com/address/2HwFCWL5g7H4z8vyhrC9DXzmDbqFKAs7aDyHEiDMiSwk?cluster=devnet), a wallet that only pays settlement fees |
+
+The Stocklana submission (tag `stocklana-submission`) runs its own program,
+[`6kqka5…SwpM`](https://explorer.solana.com/address/6kqka5NWofo1cm6bm5JMhWbQgHeR6YT23qTvwnusSwpM?cluster=devnet),
+over the same mock mints, still deployed and left exactly as it was.
 
 Every PreStock is listed, each against its own mock (full addresses in [`devnet.json`](devnet.json)):
 
 | Market | Market account | Mock mint | Multiplier | Fee |
 |---|---|---|---|---|
-| OPENAI | [`8igHst…JDtD`](https://explorer.solana.com/address/8igHstCvuXTDbP7aJKA2CDtLhejMA18aXMmDMwd1JDtD?cluster=devnet) | [`3Q43N1…VwR6`](https://explorer.solana.com/address/3Q43N1W6s77VTn2g9Tzp56p6WshVBUzRWknQeh3TVwR6?cluster=devnet) | 1.4861347 | 0.5% |
-| SPACEX | [`9wCPPb…qHVC`](https://explorer.solana.com/address/9wCPPbEj2JarSfXhNnHmZ49iRrwP3iJo6cRtMMMyqHVC?cluster=devnet) | [`3NS9XJ…gfZD`](https://explorer.solana.com/address/3NS9XJR5GbNo6XGQhZBVgCDtfiPY6T1DjcDjX4rrgfZD?cluster=devnet) | 5 | 1% |
-| ANDURIL | [`996ige…hsS5`](https://explorer.solana.com/address/996igeohhSof5hYDENavXJEBzYkCr7FgAVhoBT17hsS5?cluster=devnet) | [`BJyL2P…Yfjf`](https://explorer.solana.com/address/BJyL2P1v4kENE3uHCkxRuxAG3Qjv5KaLMTQVwqJDYfjf?cluster=devnet) | 1 | 1% |
-| ANTHROPIC | [`31ZDAv…BceX`](https://explorer.solana.com/address/31ZDAvmu9qU5AosXWVo4UU9KH1e1kXWAevwcgsoFBceX?cluster=devnet) | [`GzN2PP…QUn1`](https://explorer.solana.com/address/GzN2PPFzagbixukwGL5kLUo2F1k1t7EVa8spaicYQUn1?cluster=devnet) | 1 | 1% |
-| FIGUREAI | [`EWqjJR…TU3q`](https://explorer.solana.com/address/EWqjJRazJGYYhJcBowwLHCFu3X8f91XHyYHqzATXTU3q?cluster=devnet) | [`8TCxon…3SGg`](https://explorer.solana.com/address/8TCxonhUAPsPG7AJyzuQzZfa43jGXVgeoMgN7xQq3SGg?cluster=devnet) | 1 | 1% |
-| KALSHI | [`WvCgNQ…jM7r`](https://explorer.solana.com/address/WvCgNQkENYeD5FvTEqUF2ADbfuCQ7hcW8fxFCBPjM7r?cluster=devnet) | [`DqX88Z…LwkG`](https://explorer.solana.com/address/DqX88Z5P39MRAeFrFsEucAc5CfLTHJgaKA6CKLcDLwkG?cluster=devnet) | 1 | 1% |
-| NEURALINK | [`9KGfao…9gR4`](https://explorer.solana.com/address/9KGfaozx5cVgmNTp2TiJjm4jp6Dby5TpXiKZUwtR9gR4?cluster=devnet) | [`BZC1uG…sxqd`](https://explorer.solana.com/address/BZC1uGbbwXof8HW8CALPvwjvGTr8WqtArCcs8df4sxqd?cluster=devnet) | 1 | 1% |
-| POLYMARKET | [`CY6cnY…7AdS`](https://explorer.solana.com/address/CY6cnY73b6WhC2Dvz3aNzpMLUTUmRLjQ2yAsdC7A7AdS?cluster=devnet) | [`4PLS8f…RtQK`](https://explorer.solana.com/address/4PLS8fCUi5xgREWbVUCByPBUyCQHX6ANVJLauituRtQK?cluster=devnet) | 1 | 1% |
+| OPENAI | [`CpbNPF…Zrx8`](https://explorer.solana.com/address/CpbNPFCuREREyVrWfVTnoHpixtUyaYEtWmf5yEhjZrx8?cluster=devnet) | [`3Q43N1…VwR6`](https://explorer.solana.com/address/3Q43N1W6s77VTn2g9Tzp56p6WshVBUzRWknQeh3TVwR6?cluster=devnet) | 1.4861347 | 0.5% |
+| SPACEX | [`2tkjQP…W4Gy`](https://explorer.solana.com/address/2tkjQPB19bwMfNw5CHPXwLiZcfA5cFaNqTDfdPBLW4Gy?cluster=devnet) | [`3NS9XJ…gfZD`](https://explorer.solana.com/address/3NS9XJR5GbNo6XGQhZBVgCDtfiPY6T1DjcDjX4rrgfZD?cluster=devnet) | 5 | 1% |
+| ANDURIL | [`82QCqt…6dCv`](https://explorer.solana.com/address/82QCqtUtThP74P6hywa7BDbZCoKcieMEbotxCLgp6dCv?cluster=devnet) | [`BJyL2P…Yfjf`](https://explorer.solana.com/address/BJyL2P1v4kENE3uHCkxRuxAG3Qjv5KaLMTQVwqJDYfjf?cluster=devnet) | 1 | 1% |
+| ANTHROPIC | [`BibrhX…K9f3`](https://explorer.solana.com/address/BibrhXzFc1Q6aGR2Vws4NQJRVYWTtjGsw5MRbRZLK9f3?cluster=devnet) | [`GzN2PP…QUn1`](https://explorer.solana.com/address/GzN2PPFzagbixukwGL5kLUo2F1k1t7EVa8spaicYQUn1?cluster=devnet) | 1 | 1% |
+| FIGUREAI | [`89hm19…E9HX`](https://explorer.solana.com/address/89hm19G9kSFnj7x1m9v4D7emyQyUctwftdfSf66jE9HX?cluster=devnet) | [`8TCxon…3SGg`](https://explorer.solana.com/address/8TCxonhUAPsPG7AJyzuQzZfa43jGXVgeoMgN7xQq3SGg?cluster=devnet) | 1 | 1% |
+| KALSHI | [`B19iok…ivtW`](https://explorer.solana.com/address/B19ioktTYwoKYJEexe4nehGY8aG9FferaUNVm5ETivtW?cluster=devnet) | [`DqX88Z…LwkG`](https://explorer.solana.com/address/DqX88Z5P39MRAeFrFsEucAc5CfLTHJgaKA6CKLcDLwkG?cluster=devnet) | 1 | 1% |
+| NEURALINK | [`2iw7r7…JBww`](https://explorer.solana.com/address/2iw7r7Wi7QVQ6zxqh4vqfGTDHv16q8Kq8SGed6XZJBww?cluster=devnet) | [`BZC1uG…sxqd`](https://explorer.solana.com/address/BZC1uGbbwXof8HW8CALPvwjvGTr8WqtArCcs8df4sxqd?cluster=devnet) | 1 | 1% |
+| POLYMARKET | [`3ZcoV7…hYTw`](https://explorer.solana.com/address/3ZcoV7BX2iACaR9vYptZ4TLUWNyTKt6kKfrpEFWZhYTw?cluster=devnet) | [`4PLS8f…RtQK`](https://explorer.solana.com/address/4PLS8fCUi5xgREWbVUCByPBUyCQHX6ANVJLauituRtQK?cluster=devnet) | 1 | 1% |
 
 PreStocks exist only on mainnet, so each devnet market escrows a **mock**. Each carries the
 extensions that change the program's arithmetic: 9 decimals, a transfer fee and its real
@@ -214,7 +332,7 @@ need real PreStocks and USDC.
 What has been verified against mainnet itself:
 
 - **The real mints.** `scripts/wsl/fork-test.sh` runs every instruction against the live
-  OpenAI and SpaceX mint accounts on a local fork (26/26 checks), covering the extensions the
+  OpenAI and SpaceX mint accounts on a local fork (33/33 checks), covering the extensions the
   devnet mock lacks and SpaceX's 5x multiplier.
 - **Listing.** `node scripts/setup-mainnet.ts --dry-run` reads all 8 live PreStocks mints
   and confirms each one can be listed against real USDC.
@@ -223,9 +341,10 @@ What has been verified against mainnet itself:
 - **The interface.** On a real mint, the app refuses to quote without live mint data, shows
   wallet-scaled quantities, and enforces the cap.
 
-Launching takes about 3.6 SOL at the peak of the deploy (about 3.0 with a size-optimized
-build, `opt-level = "z"`, which shrinks the binary from 349 KB to 294 KB). About half comes
-back when the upload finishes, and the rest is a refundable storage deposit. Then:
+Launching takes about 2.1 SOL for the current 404 KB build, plus fees. That is the program
+account's storage deposit, which comes back if the program is ever closed. The upload buffer
+does not add to it: the loader empties the buffer back to the payer before charging for the
+program account, as the fresh devnet deploy of this build showed. Then:
 
 ```bash
 bash scripts/wsl/deploy-program.sh "$MAINNET_RPC_URL"
@@ -236,5 +355,6 @@ This is **unaudited** hackathon software.
 
 ---
 
-Built for the [Stocklana](https://hackathons.solana.com/hackathons/stocklana) hackathon,
-PreStocks track. PreStocks-only by design — no other pre-IPO token issuer is integrated.
+Begun at the [Stocklana](https://hackathons.solana.com/hackathons/stocklana) hackathon,
+PreStocks track, and built on for Colosseum's Crypto World's Fair. PreStocks-only by design —
+no other pre-IPO token issuer is integrated.

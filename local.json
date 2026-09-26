@@ -1,0 +1,5 @@
+{
+  "cluster": "localnet",
+  "note": "Placeholder. scripts/wsl/local-stack.sh overwrites this while a local validator is running, and --stop restores it. It is checked in so the web app always has something to import.",
+  "markets": {}
+}
