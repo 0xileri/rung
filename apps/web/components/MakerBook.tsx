@@ -394,6 +394,11 @@ export function MakerBook() {
               <span style={{ fontSize: 12, color: line.active ? 'var(--amber-ink)' : 'var(--text-faint)' }}>
                 {statusOf(line)}
               </span>
+              {line.open > 0n && !line.expired && (
+                <Link href={`/c/${c.position}`} style={{ fontSize: 12 }}>
+                  Share &#8599;
+                </Link>
+              )}
               <span style={{ flexGrow: 1 }} />
               <span style={{ fontSize: 12, color: line.active && !line.expired ? 'var(--text-muted)' : 'var(--text-faint)' }}>
                 {line.expired

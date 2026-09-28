@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { CommitmentCurve } from '../../../components/CommitmentCurve';
@@ -6,6 +7,7 @@ import { AssetSwitcher } from '../../../components/AssetSwitcher';
 import { toOpenCommitments, CLUSTER } from '../../../lib/chain';
 import { getPositionsCached } from '../../../lib/positions-cache';
 import { CapitalCharts } from '../../../components/CapitalCharts';
+import { ShareLinks } from '../../../components/ShareLinks';
 import { LadderPanel } from '../../../components/LadderPanel';
 import { capitalPointsUsd } from '../../../lib/capital-view';
 import { buildCurve } from '../../../../../packages/sdk/src/commitment-curve.ts';
@@ -64,6 +66,16 @@ async function getAsset(symbol: string) {
     caveats: mint ? custodyCaveats(mint) : [],
     feedConsistent: isFeedConsistent(asset),
   };
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ symbol: string }> }): Promise<Metadata> {
+  const { symbol } = await params;
+  const data = await getAsset(symbol).catch(() => null);
+  if (!data) return {};
+  const name = data.asset.name.replace(/ PreStocks$/i, '');
+  const title = `Where would you own ${name}? · Rung`;
+  const description = `USDC already committed to buy ${name} at each valuation, escrowed on Solana. Name your own valuation, or take the other side for a floor.`;
+  return { title, description, openGraph: { title, description }, twitter: { card: 'summary_large_image', title, description } };
 }
 
 export default async function AssetPage({ params }: { params: Promise<{ symbol: string }> }) {
@@ -139,6 +151,13 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
             )}
           </div>
           <h1 style={{ fontSize: 'clamp(40px, 6vw, 56px)' }}>Where would you own it?</h1>
+          <div style={{ marginTop: 14 }}>
+            <ShareLinks
+              size="small"
+              path={`/asset/${asset.symbol}`}
+              text={`Where would you own ${displayName}? Here's the capital already committed at each valuation:`}
+            />
+          </div>
         </div>
         <div style={{ flexGrow: 1 }} />
         <dl style={{ display: 'flex', gap: 34, margin: 0, flexWrap: 'wrap' }}>
@@ -321,6 +340,7 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
           <CommitPanel
             symbol={asset.symbol}
+            displayName={displayName}
             stockMint={escrow.mint}
             markPrice={asset.markPrice}
             markValuation={asset.markValuation}
@@ -334,6 +354,7 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
 
           <LadderPanel
             symbol={asset.symbol}
+            displayName={displayName}
             stockMint={escrow.mint}
             markPrice={asset.markPrice}
             markValuation={asset.markValuation}

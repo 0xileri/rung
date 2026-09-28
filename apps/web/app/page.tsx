@@ -114,8 +114,11 @@ export default async function Home() {
   const featured = assets.find((a) => a.symbol === 'OPENAI') ?? assets[0];
   // One chain read shared by the hero curve and the activity band.
   const fetched = await getPositionsCached();
-  const hero = await loadHero(featured, fetched);
-  const activity = await loadActivity(assets, fetched);
+  // Both price against live PreStocks data, which has briefly reported a zero mark. That throws
+  // (rightly: nothing can be priced from it), but it must cost the page its hero and figures for
+  // one render, not turn the whole landing page into an error.
+  const hero = await loadHero(featured, fetched).catch(() => null);
+  const activity = await loadActivity(assets, fetched).catch(() => null);
 
   return (
     <>

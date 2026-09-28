@@ -17,6 +17,7 @@ import {
 import { signAndSendPacked } from '../lib/pack';
 import { CLUSTER } from '../lib/chain';
 import { band, explorer, fromQuote, shortKey, toQuote, usd } from '../lib/format';
+import { ShareLinks } from './ShareLinks';
 
 /**
  * Commit across a range of valuations in one go.
@@ -54,6 +55,7 @@ export function LadderPanel({
   feeBps,
   bands,
   disabled,
+  displayName,
 }: {
   symbol: string;
   stockMint: string;
@@ -65,6 +67,8 @@ export function LadderPanel({
   feeBps: number;
   bands: number[];
   disabled?: boolean;
+  /** The asset's name for share text, e.g. "OpenAI"; the symbol otherwise. */
+  displayName?: string;
 }) {
   const { connection } = useConnection();
   const wallet = useWallet();
@@ -308,6 +312,13 @@ export function LadderPanel({
         <p className="callout" style={{ margin: '0 0 12px' }}>
           {usd(phase.totalUsd)} committed across {phase.rungs} valuation{phase.rungs === 1 ? '' : 's'}.{' '}
           <Links signatures={phase.signatures} />
+          <span style={{ display: 'block', marginTop: 10 }}>
+            <ShareLinks
+              size="small"
+              path={`/asset/${symbol}`}
+              text={`I just laddered ${usd(phase.totalUsd)} USDC across ${phase.rungs} valuations of ${displayName ?? symbol}. Where would you own it?`}
+            />
+          </span>
         </p>
       )}
       {phase.kind === 'partial' && (

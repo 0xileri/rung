@@ -3,16 +3,27 @@ import Link from 'next/link';
 import './globals.css';
 import { Mark, Wordmark } from '../components/Mark';
 import { WalletRoot, WalletBar } from '../components/WalletBar';
+import { siteOrigin } from '../lib/og';
 
-export const metadata: Metadata = {
-  title: 'Rung — capital-backed valuations for PreStocks',
-  description:
-    'Lock USDC at the private-company valuation where you would actually own exposure. PreStocks holders pay for the right to exchange their tokens for that capital before expiry.',
-  icons: [
-    { rel: 'icon', url: '/favicon.svg', type: 'image/svg+xml' },
-    { rel: 'mask-icon', url: '/icon-mask.svg', color: '#0A0A0A' },
-  ],
-};
+const TITLE = 'Rung — capital-backed valuations for PreStocks';
+const DESCRIPTION =
+  'Lock USDC at the private-company valuation where you would actually own exposure. PreStocks holders pay for the right to exchange their tokens for that capital before expiry.';
+
+// Share cards need absolute URLs on whichever domain the page was opened on, so the base comes
+// from the request rather than from a setting that could name the wrong one.
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    metadataBase: new URL(await siteOrigin()),
+    title: TITLE,
+    description: DESCRIPTION,
+    openGraph: { siteName: 'Rung', type: 'website', title: TITLE, description: DESCRIPTION },
+    twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION },
+    icons: [
+      { rel: 'icon', url: '/favicon.svg', type: 'image/svg+xml' },
+      { rel: 'mask-icon', url: '/icon-mask.svg', color: '#0A0A0A' },
+    ],
+  };
+}
 
 const NAV = [
   { href: '/', label: 'Discover' },

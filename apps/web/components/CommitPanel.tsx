@@ -16,6 +16,7 @@ import {
 } from '../lib/program';
 import { CLUSTER } from '../lib/chain';
 import { band, explorer, pct, shortKey, usd, valuation } from '../lib/format';
+import { ShareLinks } from './ShareLinks';
 
 /**
  * Turn "I would own OpenAI around $1.0T" into fixed, escrowable terms, then into a signed
@@ -50,6 +51,7 @@ export function CommitPanel({
   feeBps,
   bands,
   disabled,
+  displayName,
 }: {
   symbol: string;
   stockMint: string;
@@ -61,6 +63,8 @@ export function CommitPanel({
   feeBps: number;
   bands: number[];
   disabled?: boolean;
+  /** The asset's name for share text, e.g. "OpenAI"; the symbol otherwise. */
+  displayName?: string;
 }) {
   const { connection } = useConnection();
   const wallet = useWallet();
@@ -233,6 +237,15 @@ export function CommitPanel({
           >
             Position {shortKey(phase.position, 6, 6)} &#8599;
           </a>
+        </div>
+        <div style={{ marginBottom: 18 }}>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 10px' }}>
+            Share it: the link opens a page where anyone can take the other side.
+          </p>
+          <ShareLinks
+            path={`/c/${phase.position}`}
+            text={`I'd own ${displayName ?? symbol} at ${band(target)}, so I put ${usd(size)} USDC behind it. Take the other side:`}
+          />
         </div>
         <button
           type="button"
