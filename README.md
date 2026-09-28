@@ -49,6 +49,9 @@ depth to show; every escrow is real and every figure is read from chain.
    paid, your capital over time, and lets you withdraw what nobody took.
 4. **Walk away.** A claim past its deadline settles without either side coming back: settling
    is open to anyone, and a keeper does it for everyone every ten minutes.
+5. **Share it.** Every commitment has its own page, `/c/<address>`, whose link unfolds on X or
+   Telegram into a card with its live numbers. It is also a Solana Action: a holder can take a
+   slice from any Blink client without opening Rung (the page links to it on dial.to).
 
 Worth checking:
 

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { commitmentCard } from '../../../lib/og';
+import { commitmentCard, siteOrigin } from '../../../lib/og';
 import { CLUSTER } from '../../../lib/chain';
 import { band, dateTime, explorer, shortKey, timeUntil, usd } from '../../../lib/format';
 import { ShareLinks } from '../../../components/ShareLinks';
@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: { params: Promise<{ position:
 export default async function CommitmentPage({ params }: { params: Promise<{ position: string }> }) {
   const { position } = await params;
   if (!PUBKEY.test(position)) notFound();
-  const card = await commitmentCard(position);
+  const [card, origin] = await Promise.all([commitmentCard(position), siteOrigin()]);
   if (!card) notFound();
 
   const p = card.position;
@@ -85,6 +85,19 @@ export default async function CommitmentPage({ params }: { params: Promise<{ pos
         </Link>
         <ShareLinks path={`/c/${p.pubkey}`} text={shareText} />
       </div>
+
+      {takeable && (
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 14px' }}>
+          Or take it without opening Rung: this commitment is a Solana Action.{' '}
+          <a
+            href={`https://dial.to/?action=${encodeURIComponent(`solana-action:${origin}/api/actions/take/${p.pubkey}`)}&cluster=${CLUSTER}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open it as a Blink &#8599;
+          </a>
+        </p>
+      )}
 
       <p style={{ fontSize: 13, color: 'var(--text-faint)', margin: 0 }}>
         Maker {shortKey(p.maker)} ·{' '}
