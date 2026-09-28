@@ -50,8 +50,9 @@ depth to show; every escrow is real and every figure is read from chain.
 4. **Walk away.** A claim past its deadline settles without either side coming back: settling
    is open to anyone, and a keeper does it for everyone every ten minutes.
 5. **Share it.** Every commitment has its own page, `/c/<address>`, whose link unfolds on X or
-   Telegram into a card with its live numbers. It is also a Solana Action: a holder can take a
-   slice from any Blink client without opening Rung (the page links to it on dial.to).
+   Telegram into a card with its live numbers. It is also a Solana Action
+   (`/api/actions/take/<address>`, mapped by `/actions.json`): the page draws the Blink itself,
+   so a holder takes a slice in one click, and any Blink-aware wallet can use the same endpoint.
 
 Worth checking:
 

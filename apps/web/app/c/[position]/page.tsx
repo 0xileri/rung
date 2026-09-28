@@ -5,6 +5,7 @@ import { commitmentCard, siteOrigin } from '../../../lib/og';
 import { CLUSTER } from '../../../lib/chain';
 import { band, dateTime, explorer, shortKey, timeUntil, usd } from '../../../lib/format';
 import { ShareLinks } from '../../../components/ShareLinks';
+import { ActionWidget } from '../../../components/ActionWidget';
 
 /**
  * A commitment's public page: the link a maker shares after committing. It says what they would
@@ -87,16 +88,16 @@ export default async function CommitmentPage({ params }: { params: Promise<{ pos
       </div>
 
       {takeable && (
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 14px' }}>
-          Or take it without opening Rung: this commitment is a Solana Action.{' '}
-          <a
-            href={`https://dial.to/?action=${encodeURIComponent(`solana-action:${origin}/api/actions/take/${p.pubkey}`)}&cluster=${CLUSTER}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Open it as a Blink &#8599;
-          </a>
-        </p>
+        <div className="card tint-teal" style={{ padding: '20px 22px', marginBottom: 22 }}>
+          <div className="label" style={{ color: 'var(--teal-ink)', marginBottom: 8 }}>
+            Take a slice right here
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 14px', lineHeight: 1.55 }}>
+            This commitment is a Solana Action. The buttons below come from its own endpoint, and any Blink-aware
+            wallet can use the same one: <span className="fig">{origin.replace(/^https?:\/\//, '')}/api/actions/take/{shortKey(p.pubkey, 4, 4)}</span>
+          </p>
+          <ActionWidget actionPath={`/api/actions/take/${p.pubkey}`} />
+        </div>
       )}
 
       <p style={{ fontSize: 13, color: 'var(--text-faint)', margin: 0 }}>
