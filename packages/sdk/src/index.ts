@@ -6,3 +6,4 @@ export * from './book.ts';
 export * from './capital.ts';
 export * from './keeper.ts';
 export * from './ladder.ts';
+export * from './activity.ts';

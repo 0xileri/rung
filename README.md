@@ -71,7 +71,7 @@ Worth checking:
   are dealt with in code and disclosed on screen, not ignored.
 - **Tested against the real thing.** 37 program tests including that random walk, 33 checks
   against the real OpenAI and SpaceX mints on a mainnet fork, including slices and the fee,
-  92 SDK tests, and 12 checks against the live devnet program itself: create, take,
+  101 SDK tests, and 12 checks against the live devnet program itself: create, take,
   exercise, withdraw and expire, plus the cap and self-match guardrails.
 - **Guardrails on chain.** A $1,000 cap per position, a transfer-hook guard, and no
   self-matching, all enforced by the program.
@@ -165,7 +165,7 @@ absent counterparty can trap collateral that is owed back.
 
 ```bash
 npm install
-npm run test:sdk                      # 92 tests, no chain needed
+npm run test:sdk                      # 101 tests, no chain needed
 bash scripts/wsl/test-local.sh        # 37 tests against a local validator, one of them a random walk
 bash scripts/wsl/fork-test.sh         # every instruction against the REAL mints, on a mainnet fork
 node scripts/devnet-smoke.ts          # 12 checks: every trading instruction and two guardrails, on the live devnet program
@@ -274,7 +274,7 @@ is tested against.
   withdrawals and expiries that checks every vault is exactly balanced after every step
   (`FUZZ_SEED=<n>` replays a run)
 - Mainnet fork: **33/33** checks against the real OpenAI and SpaceX mints, including partial fills and the protocol fee
-- SDK: **92/92** tests, pinned against live mainnet values
+- SDK: **101/101** tests, pinned against live mainnet values
 - Every trading instruction has a UI: commit (one floor or a ladder), take a slice or sweep a
   band, exercise, withdraw, and settle expired claims one at a time or all at once. The one
   without a screen yet is `close_fill`, which lets a holder reclaim a settled claim's rent.

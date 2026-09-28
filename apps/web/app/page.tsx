@@ -20,7 +20,9 @@ import { pnlForPosition, priceBook, readMintScales, totalPnl, type MintScale } f
 import { ActivityBand, type Activity } from '../components/ActivityBand';
 import { TryBothSides } from '../components/TryBothSides';
 import { LiquidityTools } from '../components/LiquidityTools';
-import { escrowTargetFor, LISTED_SYMBOLS } from '../lib/deployment';
+import { ActivityFeed } from '../components/ActivityFeed';
+import { recentActivity } from '../../../packages/sdk/src/activity.ts';
+import { escrowTargetFor, LISTED_SYMBOLS, symbolForMint } from '../lib/deployment';
 
 export const dynamic = 'force-dynamic';
 
@@ -107,6 +109,18 @@ async function loadActivity(assets: PreStockAsset[], fetched: PositionsResult): 
     holders: totalPnl(held.map((h) => pnlForPosition(h, 'holder', scales[h.stockMint], prices))),
     staleSeconds: fetched.staleSeconds,
   };
+}
+
+/** Symbol and display name for each stock mint, for the activity feed's sentences and links. */
+function mintNames(mints: string[], assets: PreStockAsset[]): Record<string, { symbol: string; name: string }> {
+  const out: Record<string, { symbol: string; name: string }> = {};
+  for (const mint of new Set(mints)) {
+    const symbol = symbolForMint(mint, assets);
+    if (!symbol) continue;
+    const name = assets.find((a) => a.symbol === symbol)?.name.replace(/ PreStocks$/i, '') ?? symbol;
+    out[mint] = { symbol, name };
+  }
+  return out;
 }
 
 export default async function Home() {
@@ -266,6 +280,14 @@ export default async function Home() {
       </section>
 
       <ActivityBand activity={activity} cluster={CLUSTER} />
+
+      {fetched.ok && (
+        <ActivityFeed
+          events={recentActivity(fetched.positions, fetched.fills, 8)}
+          names={mintNames(fetched.positions.map((p) => p.stockMint), assets)}
+          now={Math.floor(Date.now() / 1000)}
+        />
+      )}
 
       {featured && <LiquidityTools symbol={LISTED_SYMBOLS[0] ?? featured.symbol} />}
 
