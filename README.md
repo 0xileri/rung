@@ -64,6 +64,10 @@ Worth checking:
 - **The fee cannot touch collateral.** The protocol takes 1% of the premium on devnet. The
   program caps it at 5% and only ever takes it from the premium, so a compromised admin
   key cannot reach anyone's collateral.
+- **A new kind of price data.** Each asset's *capital's median floor* is the valuation with half
+  the escrowed buying capital at or below it: weighted by money, not by opinions, and counting
+  only capital a holder could still take. It is on every asset page and served as open JSON at
+  [`/api/curve`](https://rung.up.railway.app/api/curve) and `/api/curve/<SYMBOL>`.
 - **No oracle in settlement.** Exercise is the holder's contractual right, and expiry is
   permissionless, so no admin switch or absent counterparty can trap collateral.
 - **The real mints, handled honestly.** The 48.6% multiplier trap, the epoch-scheduled
@@ -71,7 +75,7 @@ Worth checking:
   are dealt with in code and disclosed on screen, not ignored.
 - **Tested against the real thing.** 37 program tests including that random walk, 33 checks
   against the real OpenAI and SpaceX mints on a mainnet fork, including slices and the fee,
-  101 SDK tests, and 12 checks against the live devnet program itself: create, take,
+  106 SDK tests, and 12 checks against the live devnet program itself: create, take,
   exercise, withdraw and expire, plus the cap and self-match guardrails.
 - **Guardrails on chain.** A $1,000 cap per position, a transfer-hook guard, and no
   self-matching, all enforced by the program.
@@ -165,7 +169,7 @@ absent counterparty can trap collateral that is owed back.
 
 ```bash
 npm install
-npm run test:sdk                      # 101 tests, no chain needed
+npm run test:sdk                      # 106 tests, no chain needed
 bash scripts/wsl/test-local.sh        # 37 tests against a local validator, one of them a random walk
 bash scripts/wsl/fork-test.sh         # every instruction against the REAL mints, on a mainnet fork
 node scripts/devnet-smoke.ts          # 12 checks: every trading instruction and two guardrails, on the live devnet program
@@ -250,6 +254,17 @@ deeper and terms of 21 to 60 days; a few have a slice already taken by one of tw
 Strikes and slices are quoted from live PreStocks marks exactly as the app quotes them. On
 devnet it placed 45 commitments ($8,140) and 9 slices for about 0.25 SOL of rent.
 
+### Open data
+
+```bash
+curl https://rung.up.railway.app/api/curve          # every listed asset's signal
+curl https://rung.up.railway.app/api/curve/OPENAI   # one asset: its signal and every band
+```
+
+The same chain read and SDK arithmetic as the pages, in whole USD, with CORS open and a 30-second
+cache. Per band: capital committed, open commitments, distinct wallets, the largest wallet's
+share, the average premium and the median days to expiry.
+
 ### A local stack
 
 Devnet is shared, so changes to the program are exercised here first:
@@ -274,7 +289,7 @@ is tested against.
   withdrawals and expiries that checks every vault is exactly balanced after every step
   (`FUZZ_SEED=<n>` replays a run)
 - Mainnet fork: **33/33** checks against the real OpenAI and SpaceX mints, including partial fills and the protocol fee
-- SDK: **101/101** tests, pinned against live mainnet values
+- SDK: **106/106** tests, pinned against live mainnet values
 - Every trading instruction has a UI: commit (one floor or a ladder), take a slice or sweep a
   band, exercise, withdraw, and settle expired claims one at a time or all at once. The one
   without a screen yet is `close_fill`, which lets a holder reclaim a settled claim's rent.

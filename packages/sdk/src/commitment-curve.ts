@@ -124,3 +124,51 @@ export function peakCommitted(buckets: CurveBucket[]): bigint {
 export function isConcentrated(bucket: CurveBucket): boolean {
   return bucket.uniqueWallets > 0 && bucket.largestWalletShare > 0.5;
 }
+
+export type CurveSignal = {
+  /** Open USDC that could still be taken today, in base units. */
+  committed: bigint;
+  commitments: number;
+  wallets: number;
+  /**
+   * The capital-weighted median floor: the valuation with half of the live capital committed
+   * at or below it and half at or above. Null when nothing is committed.
+   */
+  medianFloorUsd: number | null;
+  /** The highest and lowest valuations anyone has capital at. */
+  highestFloorUsd: number | null;
+  lowestFloorUsd: number | null;
+};
+
+/**
+ * One number for "where does capital say this company is worth owning": the capital-weighted
+ * median of the valuations buyers have escrowed USDC at.
+ *
+ * Weighted by capital, not by count, so a hundred $10 opinions cannot outvote one $1,000
+ * commitment, and it counts only what a holder could still take today: capital past its
+ * deadline is no longer demand. It is a statement about committed capital, not an estimate
+ * of what the company is worth, and each commitment's own target is used rather than its band.
+ */
+export function curveSignal(commitments: OpenCommitment[], nowSeconds = Date.now() / 1000): CurveSignal {
+  const live = commitments
+    .filter((c) => c.expiryTs > nowSeconds && c.strikeQuoteEscrowed > 0n)
+    .sort((a, b) => a.targetValuationUsd - b.targetValuationUsd);
+  const committed = live.reduce((s, c) => s + c.strikeQuoteEscrowed, 0n);
+  let medianFloorUsd: number | null = null;
+  let acc = 0n;
+  for (const c of live) {
+    acc += c.strikeQuoteEscrowed;
+    if (acc * 2n >= committed) {
+      medianFloorUsd = c.targetValuationUsd;
+      break;
+    }
+  }
+  return {
+    committed,
+    commitments: live.length,
+    wallets: new Set(live.map((c) => c.maker)).size,
+    medianFloorUsd: committed > 0n ? medianFloorUsd : null,
+    highestFloorUsd: live.length ? live[live.length - 1].targetValuationUsd : null,
+    lowestFloorUsd: live.length ? live[0].targetValuationUsd : null,
+  };
+}

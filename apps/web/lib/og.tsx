@@ -12,7 +12,7 @@ import { getPositionsCached } from './positions-cache';
 import { fetchPositions, fillsFor, toOpenCommitments, type Position } from './chain';
 import { getPreStocks, findAsset } from './prestocks-cache';
 import { escrowTargetFor, symbolForMint } from './deployment';
-import { buildCurve, type CurveBucket } from '../../../packages/sdk/src/commitment-curve.ts';
+import { buildCurve, curveSignal, type CurveBucket } from '../../../packages/sdk/src/commitment-curve.ts';
 import { valuationBands, bandAnchor } from '../../../packages/sdk/src/valuation.ts';
 
 export const OG_SIZE = { width: 1200, height: 630 };
@@ -189,6 +189,8 @@ export type AssetCard = {
   totalUsd: number;
   commitments: number;
   wallets: number;
+  /** Capital-weighted median floor of live commitments, or null. */
+  medianFloorUsd: number | null;
 };
 
 /** An asset's live curve, computed exactly as its page computes it. */
@@ -209,6 +211,7 @@ export async function assetCard(symbol: string): Promise<AssetCard | null> {
     totalUsd: buckets.reduce((s, b) => s + Number(b.committed) / 1e6, 0),
     commitments: open.length,
     wallets: makers.size,
+    medianFloorUsd: curveSignal(open).medianFloorUsd,
   };
 }
 

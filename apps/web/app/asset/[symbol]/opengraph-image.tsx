@@ -34,7 +34,7 @@ export default async function Image({ params }: { params: Promise<{ symbol: stri
             </div>
             {card && (
               <span style={{ fontFamily: 'Mono', fontSize: 18, color: C.faint, marginTop: 18 }}>
-                Market trades at {bandLabel(card.marketValuation)}
+                {card.medianFloorUsd ? `Capital's median floor ${bandLabel(card.medianFloorUsd)} · ` : ''}Market {bandLabel(card.marketValuation)}
               </span>
             )}
           </div>

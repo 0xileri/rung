@@ -10,7 +10,7 @@ import { CapitalCharts } from '../../../components/CapitalCharts';
 import { ShareLinks } from '../../../components/ShareLinks';
 import { LadderPanel } from '../../../components/LadderPanel';
 import { capitalPointsUsd } from '../../../lib/capital-view';
-import { buildCurve } from '../../../../../packages/sdk/src/commitment-curve.ts';
+import { buildCurve, curveSignal } from '../../../../../packages/sdk/src/commitment-curve.ts';
 import { valuationBands, relativeTo, bandAnchor } from '../../../../../packages/sdk/src/valuation.ts';
 import { band, explorer, pct, shortKey, timeUntil, usd, fromQuote, valuation } from '../../../lib/format';
 import { getPreStocks, findAsset, getMintState } from '../../../lib/prestocks-cache';
@@ -120,6 +120,7 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
       ? `Showing chain state from ${Math.max(1, Math.round(fetched.staleSeconds / 60))} min ago: the RPC is busy.`
       : null;
   const curve = buildCurve(open, bands);
+  const signal = curveSignal(open);
   const marketVsMark = relativeTo(asset.impliedValuation, asset.markValuation);
 
   return (
@@ -188,6 +189,19 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
               {pct(marketVsMark)}
             </dd>
           </div>
+          {signal.medianFloorUsd && (
+            <div title="The valuation with half of the USDC committed to buy at or below it and half at or above. Weighted by capital, live commitments only.">
+              <dt style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 5 }}>
+                Capital&rsquo;s median floor
+              </dt>
+              <dd className="fig" style={{ fontSize: 23, margin: 0 }}>
+                {band(signal.medianFloorUsd)}
+              </dd>
+              <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 4 }}>
+                {pct(relativeTo(signal.medianFloorUsd, asset.impliedValuation), 0)} vs market
+              </div>
+            </div>
+          )}
         </dl>
       </div>
 
@@ -258,6 +272,15 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
             </p>
           )}
           {fetched.ok && <CommitmentCurve buckets={curve} marketValuationUsd={asset.impliedValuation} />}
+          {fetched.ok && (
+            <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: '10px 0 0' }}>
+              This curve and its median floor are open data:{' '}
+              <a href={`/api/curve/${asset.symbol}`} className="fig">
+                /api/curve/{asset.symbol}
+              </a>{' '}
+              (JSON, free to use).
+            </p>
+          )}
           {fetched.ok && capital.length > 1 && <CapitalCharts points={capital} scope={displayName} />}
 
           <section className="card" style={{ padding: '26px 28px' }}>
