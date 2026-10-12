@@ -52,14 +52,12 @@ The walkthrough is now a **60-second actual browser navigation recording** of th
 deployed website, replacing the earlier screenshot preview. It shows navigation,
 scrolling, changing commitment inputs, both ladder allocation shapes, a $300 sweep
 preview, a $50 partial-fill quote, and the activity feed's link to the keeper-settled
-claim. It uses Higgsfield's Arthur voice through ElevenLabs and covers what was
+claim. It has an AI voiceover and covers what was
 built, what was learned, and what comes next. Devnet mock assets and seeded capital
 remain labelled. No wallet connection is simulated and no UI transaction is submitted.
 
-[Download the narrated live demo](https://d2ol7oe51mr4n9.cloudfront.net/user_38ylnF64UtS6dh2VeeOFs6EQzLz/bee84aa6-cf38-43df-8295-fff3ef2968b3.mp4).
 The final export is H264 at 1600×900 with AAC narration; full video/audio decoding
-passed. Public provenance and the editable source bundle are recorded in
-`artifacts/walkthrough/live-navigation.json`.
+passed. Its recording details are in `artifacts/walkthrough/live-navigation.json`.
 
 Web deployment `ddd9a5d1-fa80-44f0-a2e6-d4d8d60906c2` succeeded. The production build
 passed after the copy fixes, and the live pages show the corrected holder premium
