@@ -6,6 +6,7 @@ import { getPreStocks, findAsset, getMintState } from '../../../lib/prestocks-ca
 import { relativeTo } from '../../../../../packages/sdk/src/valuation.ts';
 import { pct, valuation } from '../../../lib/format';
 import { escrowTargetFor, LISTED_SYMBOLS } from '../../../lib/deployment';
+import { PriceNote } from '../../../components/PriceNote';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,6 +84,8 @@ export default async function ProtectPage({ params }: { params: Promise<{ symbol
           them for that USDC at any point before expiry.
         </p>
       </div>
+
+      <PriceNote asset={asset} name={name} />
 
       <div
         style={{

@@ -13,6 +13,7 @@ import {
 import type { PreStockAsset } from '../../../packages/sdk/src/valuation.ts';
 import { buildCurve } from '../../../packages/sdk/src/commitment-curve.ts';
 import { getPreStocks } from '../lib/prestocks-cache';
+import { pricesAsOf } from '../lib/delisted';
 import { CLUSTER, connection, toOpenCommitments, type PositionsResult } from '../lib/chain';
 import { getPositionsCached } from '../lib/positions-cache';
 import { matchedRowFor } from '../lib/holdings';
@@ -353,20 +354,35 @@ export default async function Home() {
                   >
                     <span style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.02em' }}>
                       {name}
-                      {/* Only informative while some markets are not listed. */}
-                      {LISTED_SYMBOLS.includes(a.symbol) && LISTED_SYMBOLS.length < assets.length && (
+                      {pricesAsOf(a) ? (
                         <span
                           style={{
                             marginLeft: 8,
                             fontSize: 11,
                             fontWeight: 500,
                             letterSpacing: 0,
-                            color: 'var(--teal-ink)',
+                            color: 'var(--text-faint)',
                             verticalAlign: 'middle',
                           }}
                         >
-                          Tradable on {CLUSTER}
+                          Off PreStocks, last prices
                         </span>
+                      ) : (
+                        /* Only informative while some markets are not listed. */
+                        LISTED_SYMBOLS.includes(a.symbol) && LISTED_SYMBOLS.length < assets.length && (
+                          <span
+                            style={{
+                              marginLeft: 8,
+                              fontSize: 11,
+                              fontWeight: 500,
+                              letterSpacing: 0,
+                              color: 'var(--teal-ink)',
+                              verticalAlign: 'middle',
+                            }}
+                          >
+                            Tradable on {CLUSTER}
+                          </span>
+                        )
                       )}
                     </span>
                     <span

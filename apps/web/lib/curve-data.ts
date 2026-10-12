@@ -9,6 +9,8 @@ import { getPositionsCached } from './positions-cache';
 import { CLUSTER, PROGRAM_ID, toOpenCommitments } from './chain';
 import { getPreStocks, findAsset } from './prestocks-cache';
 import { escrowTargetFor } from './deployment';
+import { pricesAsOf } from './delisted';
+import { marketFromMark } from './market-price';
 import { buildCurve, curveSignal } from '../../../packages/sdk/src/commitment-curve.ts';
 import { bandAnchor, relativeTo, valuationBands } from '../../../packages/sdk/src/valuation.ts';
 
@@ -32,6 +34,10 @@ export async function curveData(symbol: string) {
     updatedAt: new Date().toISOString(),
     ...(fetched.staleSeconds ? { staleSeconds: fetched.staleSeconds } : {}),
     marketValuationUsd: asset.impliedValuation,
+    // Present only when PreStocks no longer lists the asset: the date its prices were last live.
+    ...(pricesAsOf(asset) ? { pricesAsOf: pricesAsOf(asset) } : {}),
+    // Present only when PreStocks published no market price, so the mark stands in for it.
+    ...(marketFromMark(asset) ? { marketValuationFromMark: true } : {}),
     markValuationUsd: asset.markValuation,
     signal: {
       medianFloorUsd: signal.medianFloorUsd,

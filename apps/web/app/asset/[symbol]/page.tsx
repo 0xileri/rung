@@ -15,6 +15,8 @@ import { valuationBands, relativeTo, bandAnchor } from '../../../../../packages/
 import { band, explorer, pct, shortKey, timeUntil, usd, fromQuote, valuation } from '../../../lib/format';
 import { getPreStocks, findAsset, getMintState } from '../../../lib/prestocks-cache';
 import { escrowTargetFor, LISTED_SYMBOLS } from '../../../lib/deployment';
+import { pricesAsOf } from '../../../lib/delisted';
+import { PriceNote } from '../../../components/PriceNote';
 import { custodyCaveats } from '../../../../../packages/sdk/src/prestocks.ts';
 import { isFeedConsistent } from '../../../../../packages/sdk/src/valuation.ts';
 
@@ -112,6 +114,7 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
     ? capitalPointsUsd(fetched.positions, fetched.fills, Math.floor(Date.now() / 1000), (p) => p.stockMint === escrow.mint)
     : [];
   const displayName = asset.name.replace(/ PreStocks$/i, '');
+  const lastKnown = pricesAsOf(asset);
   // An unreadable chain must not render as an empty market: that reads as "nobody has
   // committed", which is a claim about the world rather than about the RPC.
   const chainNote = !fetched.ok
@@ -205,6 +208,8 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
         </dl>
       </div>
 
+      <PriceNote asset={asset} name={displayName} />
+
       {!feedConsistent && (
         <p
           className="callout callout-caution"
@@ -260,7 +265,7 @@ export default async function AssetPage({ params }: { params: Promise<{ symbol: 
           {mint && mint.transferFee.transferFeeBasisPoints !== (escrow.feeBps ?? 0) && (
             <> The real mint&rsquo;s fee is currently {mint.transferFee.transferFeeBasisPoints / 100}%.</>
           )}{' '}
-          The valuations above are live from the real PreStocks API.
+          {!lastKnown && 'The valuations above are live from the real PreStocks API.'}
         </p>
       )}
 

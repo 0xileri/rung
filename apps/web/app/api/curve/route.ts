@@ -16,7 +16,7 @@ export async function GET() {
   const assets = all.flatMap((d) =>
     !d || d.error !== undefined
       ? []
-      : [{ symbol: d.symbol, name: d.name, marketValuationUsd: d.marketValuationUsd, ...d.signal, curve: `/api/curve/${d.symbol}` }],
+      : [{ symbol: d.symbol, name: d.name, marketValuationUsd: d.marketValuationUsd, ...(d.pricesAsOf ? { pricesAsOf: d.pricesAsOf } : {}), ...d.signal, curve: `/api/curve/${d.symbol}` }],
   );
   return new Response(JSON.stringify({ cluster: CLUSTER, updatedAt: new Date().toISOString(), assets }, null, 1), { headers: API_HEADERS });
 }

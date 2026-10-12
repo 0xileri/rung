@@ -1,5 +1,8 @@
 import { fetchPreStocks, fetchMintState, rpcFromUrl } from '../../../packages/sdk/src/prestocks.ts';
 import type { PreStockAsset } from '../../../packages/sdk/src/valuation.ts';
+import { withLastKnown } from './delisted';
+import { fillMarketFromMark } from './market-price';
+import { LISTED_SYMBOLS } from './deployment';
 
 /**
  * A small server-side cache in front of the PreStocks API.
@@ -33,7 +36,10 @@ export type PreStocksResult = {
 };
 
 async function refresh(): Promise<Entry> {
-  const assets = await fetchPreStocks();
+  // A null market price becomes the mark, labelled; and a market listed here keeps its pages
+  // after PreStocks stops publishing it, so the capital still escrowed on it stays visible and
+  // reachable, with its prices labelled as last known.
+  const assets = withLastKnown(fillMarketFromMark(await fetchPreStocks()), LISTED_SYMBOLS);
   cache = { assets, fetchedAt: Date.now() };
   return cache;
 }
