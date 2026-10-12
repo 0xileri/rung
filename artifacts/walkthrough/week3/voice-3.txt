@@ -1,0 +1,1 @@
+We rehearsed with two wallets: creating commitments, taking partial fills, withdrawing unmatched capital, and exercising both claims. Those checks passed.

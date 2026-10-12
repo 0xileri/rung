@@ -1,0 +1,1 @@
+Holders can take partial fills and preview protection across several floors. Makers can withdraw capital that nobody has taken.

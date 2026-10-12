@@ -1,0 +1,22 @@
+{
+  "recordedAt": "2026-10-01T14:06:15.451Z",
+  "site": "https://rung.up.railway.app",
+  "kind": "Actual browser navigation recording; no wallet signing",
+  "rawVideo": "https://d2ol7oe51mr4n9.cloudfront.net/user_38ylnF64UtS6dh2VeeOFs6EQzLz/f78ad7fa-082a-4c59-a681-a2b7f59da0af.mp4",
+  "sourceBundle": "https://d2ol7oe51mr4n9.cloudfront.net/user_38ylnF64UtS6dh2VeeOFs6EQzLz/271c45e6-f679-4778-a696-9e6da1ce346d.zip",
+  "pictureMediaId": "790f372e-8267-48d9-83c1-89610b61b594",
+  "contactSheetMediaId": "fb0e0e00-9add-4e54-9c8f-d0f639a41146",
+  "voice": "Arthur",
+  "voiceId": "30fc8796-ceb6-4a66-b3a7-4a145ef7f346",
+  "voiceType": "preset",
+  "audioJob": "8c7b2c22-8ed5-45e7-8f6b-5343fd9f67e5",
+  "audioModel": "text2speech_v2",
+  "audioVariant": "elevenlabs",
+  "audioKind": "Continuous voiceover at natural pace; no speech speed or pitch change",
+  "pictureDurationSeconds": 60,
+  "finalVideo": "https://d2ol7oe51mr4n9.cloudfront.net/user_38ylnF64UtS6dh2VeeOFs6EQzLz/bee84aa6-cf38-43df-8295-fff3ef2968b3.mp4",
+  "editableBundle": "https://d2ol7oe51mr4n9.cloudfront.net/user_38ylnF64UtS6dh2VeeOFs6EQzLz/3ae56ad4-ed0c-4541-a72c-cbb87ccbf0de.zip",
+  "finalDurationSeconds": 60,
+  "finalSizeBytes": 19109228,
+  "verification": "Full video/audio decode passed; H264 1600x900 with AAC narration"
+}

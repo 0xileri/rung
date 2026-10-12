@@ -1,0 +1,1 @@
+We also verified the scheduled keeper. It settled an expired claim, returning twenty dollars in mock collateral and the holder's stock without either party returning.
