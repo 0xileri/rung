@@ -41,8 +41,8 @@ appears cannot settle until the program is upgraded to pass the hook's accounts.
 
 PreStocks mints charge a transfer fee, so an amount sent is never the amount that arrives.
 Collateral passes through a vault twice — in on match, out on settlement — and is charged
-both times. The fee stepped from 50 bps to 100 bps at epoch 1039, so each transfer now costs
-1% and the round trip about 2%, and the issuer can change it again. Against a premium of a
+both times. Rates vary by mint and can change with the issuer's fee schedule. The asset page
+reads the current rate from chain; a historical 1% rate is not a promise about today's fee. Against a premium of a
 few percent that is material, and the Reality Check screen shows it rather than quietly
 absorbing it.
 
@@ -60,9 +60,10 @@ a fixed, small amount of SOL per position, paid by the maker.
 
 - **No secondary market.** A position cannot be transferred or sold; both sides are
   committed until exercise or expiry.
-- **No partial fills.** A $100 commitment is taken whole or not at all.
-- **The maker cannot exit after matching.** They have sold protection and are committed for
-  the full term. This is deliberate, not an oversight.
+- **Slices have a minimum size.** A partial fill must clear the configured minimum and cannot
+  leave an untakeable remainder, unless it takes all remaining capital.
+- **Matched claims stay committed.** The maker can withdraw unmatched capital, but cannot
+  withdraw the collateral backing a holder's claim before exercise or expiry.
 - **Open commitments may never match.** Standardized valuation bands and expiries reduce
   fragmentation, but nothing guarantees a counterparty.
 - **No automated premium pricing.** The maker names a premium and the taker accepts or does

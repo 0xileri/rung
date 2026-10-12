@@ -7,6 +7,7 @@ dist/
 .env.local
 test-ledger/
 *.log
+artifacts/
 
 # Anchor build artifacts (the .so is rebuildable; the program keypair is kept below)
 target/

@@ -1,5 +1,27 @@
 # Demo script (about 90 seconds of narration)
 
+## Current Rung release: October 1 update
+
+Use this sequence to demonstrate the current market features. The original narration below
+remains useful for explaining the escrow primitive, but predates partial fills.
+
+1. **Show demand.** Open an asset page and point at the Commitment Curve and capital's median
+   floor. Explain that these reflect available escrowed mock USDC on devnet; seeded demo
+   capital is not evidence of organic adoption.
+2. **Commit a range, wallet A.** Use **Commit across a range** to create several floors in
+   one approval. Show the terms and transfer-fee disclosure before signing.
+3. **Take slices, wallet B.** On Protect, review a sweep across several floors. Show the
+   premium and token requirement before signing, then show the resulting claims in Positions.
+4. **Show the maker's book, wallet A.** Point out matched capital, available capital, premium
+   received and the capital charts. Withdraw only the unmatched remainder.
+5. **Share a floor.** Open its `/c/<address>` page and show the embedded Action and share
+   links. Explain that holders can take a slice from the same endpoint.
+6. **Explain settlement.** Show the exercise review and explain permissionless expiry and
+   the keeper. Finish with the issuer-power disclosures and devnet mock label.
+
+Use current on-screen prices and terms in narration. Do not reuse the fixed prices below
+as current market data. Recheck the keeper and wallet flows before recording.
+
 **Before recording**
 
 - Two browser profiles, each with Phantom switched to **devnet** (Settings → Developer

@@ -210,13 +210,13 @@ On devnet it runs as a Railway cron job: one pass every ten minutes, paid for by
 its own that holds devnet SOL and nothing else. Railway applies the root `railway.json` to every
 service built from this repository, so on this branch it only picks the builder; each service
 carries its own commands (the site: `npm run build`, `npm start`, health check on `/`). The
-`keeper` service's settings. A redeploy from the dashboard builds with Railpack instead,
+`keeper` service's settings are listed below. A redeploy from the dashboard builds with Railpack instead,
 which would read the root `Cargo.toml` as a Rust project and ship an image without Node, so
 `railpack.json` pins its provider to Node and either builder produces a working image.
 
 | Setting | Value |
 |---|---|
-| Source | this repository, branch `feat/partial-fills` |
+| Source | this repository, branch `main` (verified October 1, 2026) |
 | Build command | a no-op: the keeper runs as TypeScript directly on Node 24 |
 | Start command | `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/keeper.ts --once` |
 | Cron schedule | `*/10 * * * *` |

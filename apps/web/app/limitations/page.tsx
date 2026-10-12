@@ -61,8 +61,8 @@ export default function Limitations() {
         <p style={{ marginTop: 0 }}>
           PreStocks mints charge a transfer fee, so the amount sent is never the amount that
           arrives. Collateral passes through a vault twice &mdash; in on match, out on settlement
-          &mdash; and is charged both times. Each transfer currently costs 1%, so the round trip
-          costs about 2%, and the issuer can change the rate. Against a premium of a few percent
+          &mdash; and is charged both times. Rates vary by mint and can change with the issuer's
+          fee schedule; the asset page reads the current rate from chain. Against a premium of a few percent
           that is material, so the Reality Check shows it rather than absorbing it quietly.
           Rung does not subsidise or rebate it.
         </p>,
@@ -130,9 +130,9 @@ export default function Limitations() {
         'Economic and structural limits',
         <ul style={{ paddingLeft: 18, marginTop: 0 }}>
           <li>No secondary market: a position cannot be transferred or sold.</li>
-          <li>No partial fills: a commitment is taken whole or not at all.</li>
+          <li>Partial fills must meet the minimum slice size and cannot leave an untakeable remainder.</li>
           <li>
-            The maker cannot exit after matching. They sold protection and are committed for the
+            The maker can withdraw unmatched capital, but cannot exit a holder's matched claim. They sold protection and are committed for the
             full term. This is deliberate.
           </li>
           <li>Open commitments may never match.</li>

@@ -113,16 +113,24 @@ async function main() {
   // Poll until the claim is no longer running, then find the transaction that settled it.
   console.log('\nWatching the claim ...');
   let reportedDue = false;
+  const watchUntil = Date.now() + 20 * 60_000;
   for (;;) {
-    const f = (await (program.account as any).fill.fetch(fill)) as { status: object };
-    const status = Object.keys(f.status)[0].toLowerCase();
+    if (Date.now() > watchUntil) throw new Error(`Keeper not verified within 20 minutes; claim ${fill.toBase58()} remains available for permissionless settlement.`);
+    // Settled fill accounts are closed. A missing account is a transition to verify from
+    // its transaction history, not a failed fetch or an assertion that expiry succeeded.
+    const f = (await (program.account as any).fill.fetchNullable(fill)) as { status: object } | null;
+    const status = f ? Object.keys(f.status)[0].toLowerCase() : 'closed';
     if (status !== 'matched') {
       const [latest] = await conn.getSignaturesForAddress(fill, { limit: 1 });
+      if (!latest) throw new Error('No transaction history found for the ended claim.');
       const tx = await conn.getTransaction(latest.signature, { maxSupportedTransactionVersion: 0, commitment: 'confirmed' });
+      if (!tx || tx.meta?.err) throw new Error('Settlement transaction is unavailable or failed; retry verification.');
+      const expired = tx.meta?.logMessages?.some((line) => line.includes('Instruction: ExpireFill'));
+      if (status === 'closed' && !expired) throw new Error('Fill closed without a verified expiry instruction.');
       const payer = tx?.transaction.message.staticAccountKeys[0].toBase58() ?? 'unknown';
       const who = payer === maker.publicKey.toBase58() ? 'the maker' : payer === taker.publicKey.toBase58() ? 'the taker' : 'neither party';
       const at = latest.blockTime ?? 0;
-      console.log(`\n${status === 'expired' ? 'Settled' : 'Ended'} (${status}) at ${clock(at)}, ${Math.max(0, at - h.expiryTs)}s after the deadline`);
+      console.log(`\n${expired ? 'Settled' : 'Ended'} (${expired ? 'expired' : status}) at ${clock(at)}, ${Math.max(0, at - h.expiryTs)}s after the deadline`);
       console.log(`  by ${payer} (${who})`);
       console.log(`  ${explorer('tx', latest.signature)}`);
       return;
