@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-01T12:34:10.696Z",
+  "cluster": "devnet",
+  "kind": "CLI rehearsal, not browser signing",
+  "maker": "3svsC48BguUN19AJDZivoLXMvjhEMeCHWrfFtCfFXZnu",
+  "taker": "AGzGy36rPWLgnVNu4v2sjJpRi3kMjmvc2VNaFBKVfL6v",
+  "program": "BEEraLqHNJ8y8yTsXpDZsRAjwB9uKc3Awj1YBLZUKu2r",
+  "steps": [
+    {
+      "position": "3r7jf9wUgMkW5NSc5CJMfH889zZ7jBHmRuLF72b6eiZh",
+      "fill": "JKFPWskbQ99WqzrFsrsfB6SGhQPzEt335xoecVzmeLn",
+      "committedUsd": 20,
+      "takenUsd": 10,
+      "withdrawnUsd": 10,
+      "settlement": "5F8auk4LPVEXvgDpNHpk8yMJnjL44ac3dpQJJ9wcKHHc5wYWx7aygWAoLMieLEm6GWARjqKJWWTsLWZb3oHDH9U5"
+    },
+    {
+      "position": "HDPRJ8UbT2uBpqRNVvswfi844inXtx2k7dCYtRKZMWHT",
+      "fill": "Fc9xrb7UnEZ7AaDQd8moK4tYKDy2hwC67y5j9734pjGu",
+      "committedUsd": 30,
+      "takenUsd": 10,
+      "withdrawnUsd": 20,
+      "settlement": "Rchg9deNoNYhdBw9RsESFJ1fdaeNxVG4XyuHRUtFzDTnBZi8bXWLdrHxpMfZHEkjQBhfc3QrhHUK2ZRAnFXbmhV"
+    }
+  ],
+  "passed": true
+}

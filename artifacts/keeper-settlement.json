@@ -1,0 +1,30 @@
+{
+  "checkedAt": "2026-10-01T12:42:49.899Z",
+  "cluster": "devnet",
+  "signature": "5qyj5VzUYs75QZC66CZ3gN4TTp7Pgd2gVadkBsJNX6ZjRyx86kTXi55SrcxVPrCVRbyqRYDMfrt6ooM4pgEzawL6",
+  "payer": "2HwFCWL5g7H4z8vyhrC9DXzmDbqFKAs7aDyHEiDMiSwk",
+  "settledAt": "2026-10-01T12:41:00.000Z",
+  "tokenDeltas": [
+    {
+      "owner": "AGzGy36rPWLgnVNu4v2sjJpRi3kMjmvc2VNaFBKVfL6v",
+      "mint": "3Q43N1W6s77VTn2g9Tzp56p6WshVBUzRWknQeh3TVwR6",
+      "rawDelta": "16589824"
+    },
+    {
+      "owner": "GvNCQf1iQBGAisMekYnx3g5ffpa87KwTB9mYsWqkaAAj",
+      "mint": "CRUjjjByxTpUfeAhR377RTdpmravXXgSX6eTk93XxBov",
+      "rawDelta": "-20000000"
+    },
+    {
+      "owner": "GvNCQf1iQBGAisMekYnx3g5ffpa87KwTB9mYsWqkaAAj",
+      "mint": "3Q43N1W6s77VTn2g9Tzp56p6WshVBUzRWknQeh3TVwR6",
+      "rawDelta": "-16673190"
+    },
+    {
+      "owner": "3svsC48BguUN19AJDZivoLXMvjhEMeCHWrfFtCfFXZnu",
+      "mint": "CRUjjjByxTpUfeAhR377RTdpmravXXgSX6eTk93XxBov",
+      "rawDelta": "20000000"
+    }
+  ],
+  "verified": true
+}
